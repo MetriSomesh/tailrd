@@ -1,0 +1,28 @@
+# systemd unit: Redis for Tailrd (minimal, 64MB cap)
+# Only needed if the system redis-server package isn't installed.
+# Install: sudo cp redis.service /etc/systemd/system/tailrd-redis.service
+
+[Unit]
+Description=Tailrd Redis (64MB, job queue + locks)
+After=network.target
+
+[Service]
+Type=simple
+User=tailrd
+Group=tailrd
+ExecStart=/usr/bin/redis-server \
+    --port 6379 \
+    --bind 127.0.0.1 \
+    --maxmemory 64mb \
+    --maxmemory-policy allkeys-lru \
+    --save "" \
+    --appendonly no \
+    --loglevel warning \
+    --databases 2
+
+MemoryMax=90M
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

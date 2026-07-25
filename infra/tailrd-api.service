@@ -1,0 +1,57 @@
+# systemd unit: Tailrd API + in-process worker
+# Install: sudo cp tailrd-api.service /etc/systemd/system/
+# Enable:  sudo systemctl enable --now tailrd-api
+
+[Unit]
+Description=Tailrd API (FastAPI + worker)
+After=network.target redis.service
+Wants=redis.service
+
+[Service]
+Type=simple
+User=tailrd
+Group=tailrd
+WorkingDirectory=/opt/tailrd/api
+Environment=PATH=/opt/tailrd/api/.venv/bin:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=/opt/tailrd/.env
+
+# Single uvicorn worker — shares process with the async job worker.
+# On 1 GB RAM, this is the only safe config.
+ExecStart=/opt/tailrd/api/.venv/bin/python -m uvicorn app.main:app \
+    --host 127.0.0.1 \
+    --port 8000 \
+    --workers 1 \
+    --loop uvloop \
+    --http httptools \
+    --log-level warning \
+    --no-access-log
+
+# Memory guard: kill before OOM-killer picks randomly
+MemoryMax=450M
+MemoryHigh=380M
+
+# CPU: don't starve the agent subprocess
+CPUWeight=80
+
+# OOM priority: keep the API alive over Redis/agent
+OOMScoreAdjust=-500
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/tailrd/api/_storage /opt/tailrd/api/_agent_workspaces /opt/tailrd/api/test_tailrd.db
+
+# Restart policy
+Restart=on-failure
+RestartSec=3
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# Graceful shutdown: let in-flight jobs drain
+TimeoutStopSec=35
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target

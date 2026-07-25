@@ -1,0 +1,60 @@
+# Caddyfile for Tailrd API
+# Caddy handles TLS (auto Let's Encrypt), security headers, and reverse proxying.
+#
+# Usage:
+#   Replace YOUR_DOMAIN with your actual domain.
+#   sudo cp Caddyfile /etc/caddy/Caddyfile
+#   sudo systemctl reload caddy
+
+YOUR_DOMAIN {
+    # TLS is automatic via Let's Encrypt. No config needed.
+
+    # Security headers (defense in depth — API sets them too, but edge is the authority)
+    header {
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=()"
+        Cross-Origin-Opener-Policy "same-origin"
+        # Remove server identification
+        -Server
+    }
+
+    # Rate limit: 60 requests per minute per IP (connection-level, before app rate limits)
+    # Uncomment when caddy-ratelimit plugin is installed:
+    # rate_limit {remote.ip} 60r/m
+
+    # Reverse proxy to the API
+    reverse_proxy 127.0.0.1:8000 {
+        # Health check: stop routing if the API is unhealthy
+        health_uri /ready
+        health_interval 10s
+        health_timeout 3s
+        health_status 200
+
+        # Timeouts
+        transport http {
+            dial_timeout 5s
+            response_header_timeout 200s  # agent jobs can take up to 180s
+            read_timeout 200s
+        }
+
+        # Forward real IP
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    # Compress responses
+    encode gzip zstd
+
+    # Access log (structured JSON for parsing)
+    log {
+        output file /var/log/caddy/tailrd-access.log {
+            roll_size 50MiB
+            roll_keep 5
+        }
+        format json
+    }
+}
