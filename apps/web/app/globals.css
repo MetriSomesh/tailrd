@@ -132,22 +132,23 @@
 :root[data-theme="light"] {
   color-scheme: light;
 
-  /* Warm-cast paper tones. Not pure white — reduces glare, reads as material. */
-  --surface-base: oklch(0.988 0.003 84);
+  /* Cool, crisp near-white. A whisper of blue (hue 260) keeps it from looking
+     grey or warm — reads as clean paper under daylight, not cream. */
+  --surface-base: oklch(0.989 0.0025 260);
   --surface-raised: oklch(1 0 0);
   --surface-overlay: oklch(1 0 0);
-  --surface-sunken: oklch(0.962 0.004 84);
+  --surface-sunken: oklch(0.966 0.004 260);
   --surface-inverse: oklch(0.192 0.009 260);
 
-  --fg-primary: oklch(0.208 0.010 260);
-  --fg-secondary: oklch(0.412 0.011 260);
-  --fg-tertiary: oklch(0.548 0.012 260);
-  --fg-quaternary: oklch(0.545 0.011 260);
-  --fg-inverse: oklch(0.978 0.003 84);
+  --fg-primary: oklch(0.205 0.012 260);
+  --fg-secondary: oklch(0.408 0.013 260);
+  --fg-tertiary: oklch(0.546 0.014 260);
+  --fg-quaternary: oklch(0.543 0.013 260);
+  --fg-inverse: oklch(0.985 0.002 260);
 
-  --border-subtle: oklch(0.922 0.004 84);
-  --border-default: oklch(0.868 0.005 84);
-  --border-strong: oklch(0.762 0.008 84);
+  --border-subtle: oklch(0.928 0.005 260);
+  --border-default: oklch(0.878 0.007 260);
+  --border-strong: oklch(0.772 0.010 260);
 
   /* Accent darkens and shifts toward burnt amber in light mode.
      L=0.545 verified at 5.0:1 against --accent-contrast (WCAG AA needs 4.5:1).
@@ -155,9 +156,9 @@
   --accent: oklch(0.545 0.138 52);
   --accent-hover: oklch(0.495 0.132 52);
   --accent-active: oklch(0.452 0.126 52);
-  --accent-subtle: oklch(0.958 0.030 78);
-  --accent-muted: oklch(0.918 0.048 78);
-  --accent-contrast: oklch(0.995 0.002 84);
+  --accent-subtle: oklch(0.960 0.028 72);
+  --accent-muted: oklch(0.922 0.046 72);
+  --accent-contrast: oklch(0.996 0.001 260);
 
   /* Semantic — desaturated to sit beside the accent without competing */
   --success: oklch(0.512 0.122 156);
@@ -172,11 +173,11 @@
   --ring: oklch(0.545 0.138 52);
   --ring-offset: var(--surface-base);
 
-  --shadow-xs: 0 1px 2px 0 oklch(0.208 0.010 260 / 0.05);
-  --shadow-sm: 0 2px 4px -1px oklch(0.208 0.010 260 / 0.07), 0 1px 2px -1px oklch(0.208 0.010 260 / 0.05);
-  --shadow-md: 0 6px 12px -2px oklch(0.208 0.010 260 / 0.09), 0 2px 4px -2px oklch(0.208 0.010 260 / 0.05);
-  --shadow-lg: 0 14px 28px -6px oklch(0.208 0.010 260 / 0.11), 0 4px 8px -4px oklch(0.208 0.010 260 / 0.06);
-  --shadow-xl: 0 26px 52px -12px oklch(0.208 0.010 260 / 0.15), 0 8px 16px -8px oklch(0.208 0.010 260 / 0.07);
+  --shadow-xs: 0 1px 2px 0 oklch(0.205 0.012 260 / 0.05);
+  --shadow-sm: 0 2px 4px -1px oklch(0.205 0.012 260 / 0.07), 0 1px 2px -1px oklch(0.205 0.012 260 / 0.05);
+  --shadow-md: 0 6px 12px -2px oklch(0.205 0.012 260 / 0.09), 0 2px 4px -2px oklch(0.205 0.012 260 / 0.05);
+  --shadow-lg: 0 14px 28px -6px oklch(0.205 0.012 260 / 0.11), 0 4px 8px -4px oklch(0.205 0.012 260 / 0.06);
+  --shadow-xl: 0 26px 52px -12px oklch(0.205 0.012 260 / 0.15), 0 8px 16px -8px oklch(0.205 0.012 260 / 0.07);
 }
 
 /* Expose tokens to Tailwind utilities */

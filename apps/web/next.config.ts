@@ -11,6 +11,9 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
 
+  // Hide the floating dev-mode indicator ("N" badge) so it doesn't overlap UI.
+  devIndicators: false,
+
   // Fail the build on type or lint errors rather than shipping broken code.
   typescript: { ignoreBuildErrors: false },
   eslint: { ignoreDuringBuilds: false },
