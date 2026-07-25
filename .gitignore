@@ -63,3 +63,5 @@ Thumbs.db
 # ---- Impeccable working artifacts (generated per session) ----
 .impeccable/cache/
 .impeccable/sessions/
+
+_skills_src/
