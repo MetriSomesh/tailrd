@@ -16,7 +16,7 @@ os.environ.update(
         "LOG_JSON": "false",
         "LOG_LEVEL": "WARNING",
         "SECRET_KEY": "test-secret-key-that-is-definitely-long-enough-000000",
-        "DATABASE_URL": "sqlite+aiosqlite:///:memory:",
+        "DATABASE_URL": "sqlite+aiosqlite:///./test_tailrd.db",
         "REDIS_FAKE": "true",
         "EMAIL_PROVIDER": "console",
         "STORAGE_BACKEND": "local",
@@ -40,14 +40,38 @@ def anyio_backend() -> str:
 
 @pytest.fixture
 async def app():
-    """Fresh app instance per test, with lifespan run."""
+    """Fresh app instance per test, with lifespan run.
+
+    Uses file-based SQLite — avoids the greenlet issues with in-memory + aiosqlite.
+    DB file is deleted between tests for isolation.
+    """
+    import os
+
     from asgi_lifespan import LifespanManager
+
+    # Remove stale test DB
+    db_path = "./test_tailrd.db"
+    if os.path.exists(db_path):
+        os.remove(db_path)
+
+    # Reset the singleton engine so each test gets a fresh DB.
+    from app.db import session as db_session
+
+    db_session._engine = None
+    db_session._sessionmaker = None
 
     from app.main import create_app
 
     application = create_app()
     async with LifespanManager(application, startup_timeout=30, shutdown_timeout=30):
         yield application
+
+    # Clean up engine after test
+    await db_session.dispose_engine()
+
+    # Remove test DB file
+    if os.path.exists(db_path):
+        os.remove(db_path)
 
 
 @pytest.fixture
@@ -63,7 +87,7 @@ async def client(app) -> AsyncGenerator[AsyncClient, None]:
 
 @pytest.fixture(autouse=True)
 async def _reset_singletons():
-    """Clear module-level singletons between tests to avoid cross-test leakage."""
+    """Clear Redis between tests. Engine is reset in the app fixture."""
     yield
     from app.services import cache
 

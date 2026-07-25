@@ -140,10 +140,11 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
 
     # Auth routes
-    from app.routers import account, auth
+    from app.routers import account, auth, profile
 
     app.include_router(auth.router, prefix=settings.API_V1_PREFIX)
     app.include_router(account.router, prefix=settings.API_V1_PREFIX)
+    app.include_router(profile.router, prefix=settings.API_V1_PREFIX)
 
     return app
 

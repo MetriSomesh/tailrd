@@ -31,7 +31,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101", "S105", "S106", "T20"]
+"tests/*" = ["S101", "S105", "S106", "T20", "ASYNC240"]
 "app/engine/*" = ["T20"]  # ported scripts print to stdout by design
 "app/services/email.py" = ["T20"]  # console provider prints emails intentionally
 
