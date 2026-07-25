@@ -65,7 +65,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         log.info("sentry_initialised")
 
     # Warm the DB connection so a bad DATABASE_URL surfaces now, not later.
-    from app.db.session import check_database
+    from app.db.session import check_database, get_engine
+
+    # Auto-create tables in local/test (SQLite). Production uses Alembic.
+    if settings.DATABASE_URL.startswith("sqlite"):
+        import app.db.models  # noqa: F401 — side-effect: registers models with metadata
+        from app.db.base import Base
+
+        async with get_engine().begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
 
     db_ok, db_detail = await check_database()
     if not db_ok:
@@ -130,6 +138,12 @@ def create_app() -> FastAPI:
     register_exception_handlers(app)
 
     app.include_router(health.router)
+
+    # Auth routes
+    from app.routers import account, auth
+
+    app.include_router(auth.router, prefix=settings.API_V1_PREFIX)
+    app.include_router(account.router, prefix=settings.API_V1_PREFIX)
 
     return app
 
