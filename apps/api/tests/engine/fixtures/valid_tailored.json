@@ -1,0 +1,54 @@
+{
+  "immutable": {
+    "name": "Test Candidate",
+    "contact": {
+      "phone": "1234567890",
+      "email": "test@example.com"
+    },
+    "education": [
+      {
+        "degree": "B.S. Computer Science",
+        "institution": "Test University",
+        "dates": "2020 - 2024"
+      }
+    ]
+  },
+  "editable": {
+    "about": "Skilled at tackling ambiguous problem spaces and turning them into reliable, observable systems that ship. Full stack engineer with 3 years of experience building React applications and Python backends.",
+    "skills": {
+      "Languages": ["Python", "TypeScript", "JavaScript"],
+      "Frameworks": ["React", "Next.js", "FastAPI"],
+      "Databases": ["PostgreSQL", "Redis", "MongoDB"]
+    },
+    "experience": [
+      {
+        "title": "Software Engineer",
+        "company": "TechCorp",
+        "location": "Remote",
+        "dates": "Jan 2023 - Present",
+        "bullets": [
+          "Built a real-time data pipeline processing 10,000 events/second using Python and Redis, reducing latency by 40%.",
+          "Designed and deployed a React dashboard serving 2,000+ daily users with 99.9% uptime.",
+          "Led migration from monolith to microservices, cutting deployment time from 2 hours to 15 minutes."
+        ]
+      },
+      {
+        "title": "Junior Developer",
+        "company": "StartupCo",
+        "location": "NYC",
+        "dates": "Jun 2021 - Dec 2022",
+        "bullets": [
+          "Developed REST APIs using FastAPI handling 500 requests/sec with <50ms p95 latency.",
+          "Implemented CI/CD pipeline reducing release cycle from 1 week to daily deployments."
+        ]
+      }
+    ],
+    "projects": [
+      {
+        "title": "AI Document Processor",
+        "description": "Built a document processing pipeline using LangChain and FastAPI that extracts structured data from PDFs.\nAchieved 95% accuracy on a 200-document test set with average processing time of 3 seconds per page.\nDeployed on AWS with Docker, handling 1,000+ documents daily.",
+        "technologies": ["Python", "LangChain", "FastAPI", "AWS", "Docker"]
+      }
+    ]
+  }
+}

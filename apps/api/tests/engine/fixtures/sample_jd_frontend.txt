@@ -1,0 +1,17 @@
+Frontend Developer — Acme Corp
+
+About Us: Acme Corp builds beautiful web experiences for e-commerce brands.
+
+Responsibilities:
+- Build responsive, accessible web applications using React and TypeScript.
+- Implement pixel-perfect UI designs from Figma mockups.
+- Optimize frontend performance (Core Web Vitals, bundle size, lazy loading).
+- Write unit and integration tests using Jest and React Testing Library.
+- Collaborate with backend engineers on API contracts and data fetching.
+
+Requirements:
+- 3+ years of experience with React, TypeScript, and modern CSS (Tailwind or styled-components).
+- Strong understanding of HTML semantics and web accessibility (WCAG 2.1).
+- Experience with Next.js or similar SSR/SSG frameworks.
+- Familiarity with state management (Redux, Zustand, or React Query).
+- Experience with Git, CI/CD pipelines, and agile development workflows.

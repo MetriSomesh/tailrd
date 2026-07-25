@@ -1,0 +1,9 @@
+{
+  "immutable": {
+    "name": "Test Candidate"
+  },
+  "editable": {
+    "skills": "not a list or dict",
+    "experience": "should be an array"
+  }
+}

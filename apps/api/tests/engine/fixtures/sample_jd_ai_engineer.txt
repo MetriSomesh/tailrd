@@ -1,0 +1,20 @@
+AI Engineer — Lexi
+
+About Us: At Lexi, we're revolutionising how legal work gets done. We are building AI legal associates that complete real legal work end to end.
+
+The Role: As an AI Engineer, you'll build the systems that power Lexi's AI legal associates across retrieval, document understanding, drafting, review, and multi-step legal workflows.
+
+Responsibilities:
+- Building LLM-powered agents and multi-agent orchestration systems that can complete complex legal tasks across documents, matters, and user instructions.
+- Improving retrieval, document processing, and context management so Lexi's outputs are more accurate, grounded, and useful.
+- Designing backend systems, APIs, and services that are secure, reliable, observable, and built for real customer usage.
+- Creating evals, benchmarks, guardrails, and instrumentation that help us measure and improve agent quality quickly.
+- Working closely with founders, product, and legal users to turn messy workflows into systems that actually ship.
+
+Qualifications:
+- Strong engineering fundamentals and can write clean, reliable production code in Python.
+- Hands-on experience building with LLMs, agents, multi-agent orchestration systems, retrieval systems, or AI-powered workflows.
+- Comfortable working with Postgres, Redis, queues, Docker, cloud services, and async pipelines.
+- Cares about evals, benchmarks, latency, observability, and reliability.
+- Can take an ambiguous product or workflow problem and turn it into a working system.
+- Strong product mindset, moves fast, and takes ownership.

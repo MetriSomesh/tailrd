@@ -32,8 +32,9 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101", "S105", "S106", "T20", "ASYNC240"]
-"app/engine/*" = ["T20"]  # ported scripts print to stdout by design
+"app/engine/*" = ["T20", "S110", "S105", "E501", "C4", "UP", "B", "SIM", "RET", "I"]  # ported code, lint lightly
 "app/services/email.py" = ["T20"]  # console provider prints emails intentionally
+"tests/engine/*" = ["S101", "S105", "S106", "T20", "ASYNC240", "E501", "I", "SIM"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

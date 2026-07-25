@@ -1,0 +1,16 @@
+{
+  "immutable": {
+    "name": "Minimal Person",
+    "contact": {
+      "phone": "0000000000",
+      "email": "min@test.com"
+    },
+    "education": []
+  },
+  "editable": {
+    "about": "A short summary.",
+    "skills": ["Python", "JavaScript"],
+    "experience": [],
+    "projects": []
+  }
+}
