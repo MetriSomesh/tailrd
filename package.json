@@ -3,9 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Tailrd — AI resume tailoring as a service",
-  "workspaces": [
-    "apps/web"
-  ],
+  "workspaces": [],
   "engines": {
     "node": ">=20.11",
     "npm": ">=10"
