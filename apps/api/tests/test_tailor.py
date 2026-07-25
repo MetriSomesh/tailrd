@@ -38,7 +38,14 @@ async def _create_complete_user(client: AsyncClient) -> None:
     # Add experience
     await client.put(
         "/api/v1/profile/experiences",
-        json=[{"title": "SWE", "company": "BigCo", "dates": "2024-Present", "bullets": ["Built stuff."]}],
+        json=[
+            {
+                "title": "SWE",
+                "company": "BigCo",
+                "dates": "2024-Present",
+                "bullets": ["Built stuff."],
+            }
+        ],
     )
     # Add skills
     await client.put(
@@ -88,7 +95,11 @@ class TestSubmitTailor:
         # Sign up but don't complete profile
         await client.post(
             "/api/v1/auth/signup",
-            json={"email": "incomplete@test.com", "password": "strongPass123!", "name": "Incomplete"},
+            json={
+                "email": "incomplete@test.com",
+                "password": "strongPass123!",
+                "name": "Incomplete",
+            },
         )
         # Verify email
         from sqlalchemy import select

@@ -7,7 +7,7 @@ test.describe("dashboard", () => {
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Dashboard");
     // Stats cards should be visible
     await expect(page.getByText("Usage")).toBeVisible();
-    await expect(page.getByText("Credits")).toBeVisible();
+    await expect(page.getByText("available credits")).toBeVisible();
     await expect(page.getByText("Best Score")).toBeVisible();
   });
 
@@ -85,9 +85,10 @@ test.describe("billing page", () => {
   test("shows pricing plans", async ({ page }) => {
     await page.goto("/billing");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Billing");
-    await expect(page.getByText("₹29")).toBeVisible();
-    await expect(page.getByText("₹149")).toBeVisible();
-    await expect(page.getByText("₹349")).toBeVisible();
+    // Check plan names exist (avoid locale-dependent currency formatting)
+    await expect(page.getByText("Per resume")).toBeVisible();
+    await expect(page.getByText("Weekly")).toBeVisible();
+    await expect(page.getByText("Monthly")).toBeVisible();
   });
 
   test("passes WCAG accessibility audit", async ({ page }) => {

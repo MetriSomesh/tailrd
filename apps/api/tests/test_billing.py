@@ -11,9 +11,14 @@ async def _create_verified_user(client: AsyncClient, email: str = "billing@test.
         "/api/v1/auth/signup",
         json={"email": email, "password": "strongPass123!", "name": "Billing User"},
     )
-    await client.patch("/api/v1/profile/basics", json={"full_name": "Billing User", "phone": "123", "email": email})
+    await client.patch(
+        "/api/v1/profile/basics", json={"full_name": "Billing User", "phone": "123", "email": email}
+    )
     await client.put("/api/v1/profile/educations", json=[{"degree": "BS", "institution": "U"}])
-    await client.put("/api/v1/profile/experiences", json=[{"title": "SWE", "company": "Co", "bullets": ["Did x."]}])
+    await client.put(
+        "/api/v1/profile/experiences",
+        json=[{"title": "SWE", "company": "Co", "bullets": ["Did x."]}],
+    )
     await client.put("/api/v1/profile/skills", json=[{"category": "Lang", "items": ["Python"]}])
     await client.post("/api/v1/profile/step", json={"step": 8})
 

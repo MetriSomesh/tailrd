@@ -8,14 +8,14 @@ import pytest
 from app.engine.validators import validate_resume_schema, load_json_safe, load_text_safe
 
 
-FIXTURES = os.path.join(os.path.dirname(__file__), 'fixtures')
+FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
 
 
 class TestValidateResumeSchema:
     """Tests for validate_resume_schema()."""
 
     def test_valid_resume_returns_no_errors(self):
-        path = os.path.join(FIXTURES, 'valid_tailored.json')
+        path = os.path.join(FIXTURES, "valid_tailored.json")
         with open(path) as f:
             data = json.load(f)
         errors = validate_resume_schema(data)
@@ -38,7 +38,7 @@ class TestValidateResumeSchema:
     def test_missing_contact(self):
         data = {
             "immutable": {"name": "X", "education": []},
-            "editable": {"about": "x", "skills": [], "experience": []}
+            "editable": {"about": "x", "skills": [], "experience": []},
         }
         errors = validate_resume_schema(data)
         assert any("contact" in e for e in errors)
@@ -49,8 +49,8 @@ class TestValidateResumeSchema:
             "editable": {
                 "about": "x",
                 "skills": [],
-                "experience": [{"title": "T", "company": "C", "dates": "D"}]
-            }
+                "experience": [{"title": "T", "company": "C", "dates": "D"}],
+            },
         }
         errors = validate_resume_schema(data)
         assert any("bullets" in e for e in errors)
@@ -58,7 +58,7 @@ class TestValidateResumeSchema:
     def test_empty_about_string(self):
         data = {
             "immutable": {"name": "X", "contact": {"email": "x"}, "education": []},
-            "editable": {"about": "   ", "skills": [], "experience": []}
+            "editable": {"about": "   ", "skills": [], "experience": []},
         }
         errors = validate_resume_schema(data)
         assert any("empty" in e.lower() for e in errors)
@@ -69,14 +69,14 @@ class TestValidateResumeSchema:
             "editable": {
                 "about": "test",
                 "skills": {"Languages": "python"},  # should be a list
-                "experience": []
-            }
+                "experience": [],
+            },
         }
         errors = validate_resume_schema(data)
         assert any("list" in e for e in errors)
 
     def test_malformed_fixture(self):
-        path = os.path.join(FIXTURES, 'malformed_tailored.json')
+        path = os.path.join(FIXTURES, "malformed_tailored.json")
         with open(path) as f:
             data = json.load(f)
         errors = validate_resume_schema(data)
@@ -84,7 +84,7 @@ class TestValidateResumeSchema:
         assert len(errors) >= 2
 
     def test_minimal_valid_resume(self):
-        path = os.path.join(FIXTURES, 'minimal_tailored.json')
+        path = os.path.join(FIXTURES, "minimal_tailored.json")
         with open(path) as f:
             data = json.load(f)
         errors = validate_resume_schema(data)
@@ -99,9 +99,9 @@ class TestLoadJsonSafe:
             load_json_safe("/nonexistent/path/file.json")
 
     def test_valid_file_loads(self):
-        path = os.path.join(FIXTURES, 'valid_tailored.json')
+        path = os.path.join(FIXTURES, "valid_tailored.json")
         data = load_json_safe(path)
-        assert data['immutable']['name'] == 'Test Candidate'
+        assert data["immutable"]["name"] == "Test Candidate"
 
     def test_invalid_json_exits(self, tmp_path):
         bad_file = tmp_path / "bad.json"
@@ -118,7 +118,7 @@ class TestLoadTextSafe:
             load_text_safe("/nonexistent/path/file.txt")
 
     def test_valid_file_loads(self):
-        path = os.path.join(FIXTURES, 'sample_jd_ai_engineer.txt')
+        path = os.path.join(FIXTURES, "sample_jd_ai_engineer.txt")
         text = load_text_safe(path)
         assert "Lexi" in text
         assert len(text) > 100

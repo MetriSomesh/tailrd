@@ -69,7 +69,9 @@ class TailorResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-@router.post("/tailor", response_model=TailorResponse, status_code=202, dependencies=[Depends(require_csrf)])
+@router.post(
+    "/tailor", response_model=TailorResponse, status_code=202, dependencies=[Depends(require_csrf)]
+)
 async def submit_tailor_job(
     body: TailorRequest,
     user: User = Depends(get_verified_user),
@@ -86,9 +88,7 @@ async def submit_tailor_job(
     profile_result = await db.execute(select(Profile).where(Profile.user_id == user.id))
     profile = profile_result.scalar_one_or_none()
     if not profile or not profile.is_complete:
-        raise OnboardingIncompleteError(
-            "Complete your profile before tailoring a resume."
-        )
+        raise OnboardingIncompleteError("Complete your profile before tailoring a resume.")
 
     # TODO Phase 6: quota check here
 

@@ -73,7 +73,11 @@ class TestMockBackend:
     async def test_returns_tailored_json(self) -> None:
         backend = MockAgentBackend()
         base = {
-            "immutable": {"name": "Test", "contact": {"phone": "123", "email": "t@t.com"}, "education": []},
+            "immutable": {
+                "name": "Test",
+                "contact": {"phone": "123", "email": "t@t.com"},
+                "education": [],
+            },
             "editable": {
                 "about": "Engineer.",
                 "skills": ["Python", "React"],

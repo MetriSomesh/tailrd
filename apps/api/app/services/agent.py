@@ -146,8 +146,10 @@ class OpenCodeAgentBackend(AgentBackend):
             cmd = [
                 self._command,
                 "run",
-                "--skill", "resume-tailor",
-                "--cwd", str(workspace),
+                "--skill",
+                "resume-tailor",
+                "--cwd",
+                str(workspace),
             ]
 
             log.info("agent_spawn", run_id=run_id, cmd=" ".join(cmd))
@@ -174,9 +176,7 @@ class OpenCodeAgentBackend(AgentBackend):
                 process.kill()
                 await process.wait()
                 log.error("agent_timeout", run_id=run_id, timeout=self._timeout)
-                raise AgentTimeoutError(
-                    f"Resume engine timed out after {self._timeout}s."
-                ) from exc
+                raise AgentTimeoutError(f"Resume engine timed out after {self._timeout}s.") from exc
 
             if process.returncode != 0:
                 stderr_text = (stderr or b"").decode()[:500]
@@ -186,31 +186,23 @@ class OpenCodeAgentBackend(AgentBackend):
                     returncode=process.returncode,
                     stderr=stderr_text,
                 )
-                raise AgentUnavailableError(
-                    f"Resume engine exited with code {process.returncode}."
-                )
+                raise AgentUnavailableError(f"Resume engine exited with code {process.returncode}.")
 
             # Read the output
             tailored_path = workspace / "tailored.json"
             if not tailored_path.exists():
                 log.error("agent_no_output", run_id=run_id)
-                raise AgentOutputInvalidError(
-                    "Resume engine completed but did not produce output."
-                )
+                raise AgentOutputInvalidError("Resume engine completed but did not produce output.")
 
             try:
                 tailored = json.loads(tailored_path.read_text(encoding="utf-8"))
             except (json.JSONDecodeError, UnicodeDecodeError) as exc:
                 log.error("agent_output_parse_error", run_id=run_id, error=str(exc)[:200])
-                raise AgentOutputInvalidError(
-                    "Resume engine produced invalid output."
-                ) from exc
+                raise AgentOutputInvalidError("Resume engine produced invalid output.") from exc
 
             # Basic schema check
             if "immutable" not in tailored or "editable" not in tailored:
-                raise AgentOutputInvalidError(
-                    "Resume engine output is missing required keys."
-                )
+                raise AgentOutputInvalidError("Resume engine output is missing required keys.")
 
             log.info("agent_success", run_id=run_id)
             return AgentResult(tailored_json=tailored, iterations=1)
@@ -291,7 +283,7 @@ async def run_agent(
         if acquired:
             break
         log.info("agent_lock_busy", attempt=attempt + 1)
-        await asyncio.sleep(2 ** attempt)
+        await asyncio.sleep(2**attempt)
 
     if not acquired:
         raise AgentUnavailableError(

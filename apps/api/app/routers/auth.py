@@ -71,7 +71,11 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str)
 
 
 def _clear_auth_cookies(response: Response) -> None:
-    for name in (settings.SESSION_COOKIE_NAME, settings.REFRESH_COOKIE_NAME, settings.CSRF_COOKIE_NAME):
+    for name in (
+        settings.SESSION_COOKIE_NAME,
+        settings.REFRESH_COOKIE_NAME,
+        settings.CSRF_COOKIE_NAME,
+    ):
         response.delete_cookie(name, path="/", domain=settings.COOKIE_DOMAIN)
 
 
@@ -108,12 +112,16 @@ async def signup(
     )
     # Log the user in immediately (unverified — can browse profile but not tailor).
     _, access_token, refresh_token = await auth_service.login(
-        db, email=body.email, password=body.password,
+        db,
+        email=body.email,
+        password=body.password,
         user_agent=request.headers.get("user-agent"),
         ip=request.client.host if request.client else None,
     )
     _set_auth_cookies(response, access_token, refresh_token)
-    return AuthResponse(user=_user_to_response(user), message="Account created. Check your email to verify.")
+    return AuthResponse(
+        user=_user_to_response(user), message="Account created. Check your email to verify."
+    )
 
 
 @router.post("/login", response_model=AuthResponse)
@@ -183,7 +191,9 @@ async def resend_verification(
     db: AsyncSession = Depends(get_session),
 ):
     await auth_service.resend_verification(db, email=body.email)
-    return MessageResponse(message="If that email is registered and unverified, a new link was sent.")
+    return MessageResponse(
+        message="If that email is registered and unverified, a new link was sent."
+    )
 
 
 @router.post("/forgot-password", response_model=MessageResponse)

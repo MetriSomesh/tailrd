@@ -44,7 +44,13 @@ class ConsoleEmailProvider(EmailProvider):
     """Prints emails to stdout. Perfect for local dev."""
 
     async def send(
-        self, to: str, subject: str, html: str, *, text: str | None = None, reply_to: str | None = None
+        self,
+        to: str,
+        subject: str,
+        html: str,
+        *,
+        text: str | None = None,
+        reply_to: str | None = None,
     ) -> bool:
         log.info(
             "email_sent_console",
@@ -52,15 +58,15 @@ class ConsoleEmailProvider(EmailProvider):
             subject=subject,
             html_length=len(html),
         )
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"  TO:      {to}")
         print(f"  SUBJECT: {subject}")
         print(f"  FROM:    {settings.EMAIL_FROM}")
         if reply_to:
             print(f"  REPLY:   {reply_to}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print(text or html)
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
         return True
 
 
@@ -70,7 +76,13 @@ class ResendEmailProvider(EmailProvider):
     BASE_URL = "https://api.resend.com"
 
     async def send(
-        self, to: str, subject: str, html: str, *, text: str | None = None, reply_to: str | None = None
+        self,
+        to: str,
+        subject: str,
+        html: str,
+        *,
+        text: str | None = None,
+        reply_to: str | None = None,
     ) -> bool:
         if not settings.RESEND_API_KEY:
             log.error("resend_api_key_missing")

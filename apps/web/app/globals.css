@@ -84,7 +84,7 @@
   --text-primary: oklch(0.972 0.004 260);
   --text-secondary: oklch(0.775 0.010 260);
   --text-tertiary: oklch(0.605 0.012 260);
-  --text-quaternary: oklch(0.468 0.012 260);
+  --text-quaternary: oklch(0.595 0.012 260);
   --text-inverse: oklch(0.165 0.008 260);
 
   /* Borders — mostly invisible, revealed on interaction */
@@ -139,7 +139,7 @@
   --text-primary: oklch(0.208 0.010 260);
   --text-secondary: oklch(0.412 0.011 260);
   --text-tertiary: oklch(0.548 0.012 260);
-  --text-quaternary: oklch(0.665 0.011 260);
+  --text-quaternary: oklch(0.545 0.011 260);
   --text-inverse: oklch(0.978 0.003 84);
 
   --border-subtle: oklch(0.922 0.004 84);
@@ -156,13 +156,14 @@
   --accent-muted: oklch(0.918 0.048 78);
   --accent-contrast: oklch(0.995 0.002 84);
 
+  /* Semantic — desaturated to sit beside the accent without competing */
   --success: oklch(0.512 0.122 156);
   --success-subtle: oklch(0.955 0.032 156);
-  --warning: oklch(0.582 0.130 62);
+  --warning: oklch(0.545 0.130 62);
   --warning-subtle: oklch(0.960 0.038 62);
-  --danger: oklch(0.548 0.192 22);
+  --danger: oklch(0.502 0.192 22);
   --danger-subtle: oklch(0.958 0.030 22);
-  --info: oklch(0.522 0.128 232);
+  --info: oklch(0.488 0.128 232);
   --info-subtle: oklch(0.955 0.028 232);
 
   --ring: oklch(0.545 0.138 52);

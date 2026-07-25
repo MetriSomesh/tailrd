@@ -88,7 +88,9 @@ async def create_credit_order(
     return await payment_service.purchase_credits(db, user.id)
 
 
-@router.post("/confirm", response_model=ConfirmPaymentResponse, dependencies=[Depends(require_csrf)])
+@router.post(
+    "/confirm", response_model=ConfirmPaymentResponse, dependencies=[Depends(require_csrf)]
+)
 async def confirm_payment(
     body: ConfirmPaymentRequest,
     user: User = Depends(get_verified_user),
@@ -100,7 +102,9 @@ async def confirm_payment(
     )
 
 
-@router.post("/subscriptions", response_model=SubscriptionResponse, dependencies=[Depends(require_csrf)])
+@router.post(
+    "/subscriptions", response_model=SubscriptionResponse, dependencies=[Depends(require_csrf)]
+)
 async def create_subscription(
     body: SubscriptionRequest,
     user: User = Depends(get_verified_user),

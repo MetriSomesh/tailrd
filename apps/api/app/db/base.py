@@ -43,9 +43,7 @@ def new_uuid() -> str:
 
 
 class UUIDPrimaryKeyMixin:
-    id: Mapped[str] = mapped_column(
-        String(32), primary_key=True, default=new_uuid, index=True
-    )
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_uuid, index=True)
 
 
 class TimestampMixin:

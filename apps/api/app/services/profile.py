@@ -63,25 +63,45 @@ def _profile_to_out(profile: Profile) -> ProfileOut:
         onboarding_step=profile.onboarding_step,
         is_complete=profile.is_complete,
         educations=[
-            EducationOut(id=e.id, degree=e.degree, institution=e.institution, dates=e.dates, sort_order=e.sort_order)
+            EducationOut(
+                id=e.id,
+                degree=e.degree,
+                institution=e.institution,
+                dates=e.dates,
+                sort_order=e.sort_order,
+            )
             for e in profile.educations
         ],
         experiences=[
             ExperienceOut(
-                id=e.id, title=e.title, company=e.company, location=e.location,
-                dates=e.dates, bullets=json.loads(e.bullets_json), sort_order=e.sort_order,
+                id=e.id,
+                title=e.title,
+                company=e.company,
+                location=e.location,
+                dates=e.dates,
+                bullets=json.loads(e.bullets_json),
+                sort_order=e.sort_order,
             )
             for e in profile.experiences
         ],
         projects=[
             ProjectOut(
-                id=p.id, title=p.title, description=p.description,
-                technologies=json.loads(p.technologies_json), url=p.url, sort_order=p.sort_order,
+                id=p.id,
+                title=p.title,
+                description=p.description,
+                technologies=json.loads(p.technologies_json),
+                url=p.url,
+                sort_order=p.sort_order,
             )
             for p in profile.projects
         ],
         skills=[
-            SkillCategoryOut(id=s.id, category=s.category, items=json.loads(s.items_json), sort_order=s.sort_order)
+            SkillCategoryOut(
+                id=s.id,
+                category=s.category,
+                items=json.loads(s.items_json),
+                sort_order=s.sort_order,
+            )
             for s in profile.skills
         ],
     )
@@ -159,8 +179,11 @@ async def set_educations(db: AsyncSession, user_id: str, items: list[EducationIn
     await db.flush()
     for i, item in enumerate(items):
         edu = Education(
-            id=new_uuid(), profile_id=profile.id,
-            degree=item.degree, institution=item.institution, dates=item.dates,
+            id=new_uuid(),
+            profile_id=profile.id,
+            degree=item.degree,
+            institution=item.institution,
+            dates=item.dates,
             sort_order=i,
         )
         db.add(edu)
@@ -182,9 +205,13 @@ async def set_experiences(db: AsyncSession, user_id: str, items: list[Experience
     await db.flush()
     for i, item in enumerate(items):
         exp = Experience(
-            id=new_uuid(), profile_id=profile.id,
-            title=item.title, company=item.company, location=item.location,
-            dates=item.dates, bullets_json=json.dumps(item.bullets),
+            id=new_uuid(),
+            profile_id=profile.id,
+            title=item.title,
+            company=item.company,
+            location=item.location,
+            dates=item.dates,
+            bullets_json=json.dumps(item.bullets),
             sort_order=i,
         )
         db.add(exp)
@@ -205,9 +232,12 @@ async def set_projects(db: AsyncSession, user_id: str, items: list[ProjectIn]) -
     await db.flush()
     for i, item in enumerate(items):
         proj = Project(
-            id=new_uuid(), profile_id=profile.id,
-            title=item.title, description=item.description,
-            technologies_json=json.dumps(item.technologies), url=item.url,
+            id=new_uuid(),
+            profile_id=profile.id,
+            title=item.title,
+            description=item.description,
+            technologies_json=json.dumps(item.technologies),
+            url=item.url,
             sort_order=i,
         )
         db.add(proj)
@@ -228,8 +258,10 @@ async def set_skills(db: AsyncSession, user_id: str, items: list[SkillCategoryIn
     await db.flush()
     for i, item in enumerate(items):
         cat = SkillCategory(
-            id=new_uuid(), profile_id=profile.id,
-            category=item.category, items_json=json.dumps(item.items),
+            id=new_uuid(),
+            profile_id=profile.id,
+            category=item.category,
+            items_json=json.dumps(item.items),
             sort_order=i,
         )
         db.add(cat)
@@ -272,10 +304,9 @@ async def build_base_resume_json(db: AsyncSession, user_id: str) -> dict:
         },
         "editable": {
             "about": profile.hook_line or "",
-            "skills": {
-                s.category: json.loads(s.items_json)
-                for s in profile.skills
-            } if profile.skills else [],
+            "skills": {s.category: json.loads(s.items_json) for s in profile.skills}
+            if profile.skills
+            else [],
             "experience": [
                 {
                     "title": exp.title,

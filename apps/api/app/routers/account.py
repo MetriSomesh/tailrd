@@ -50,8 +50,9 @@ async def delete_account(
 
     # Record consent withdrawal
     result = await db.execute(
-        select(ConsentRecord)
-        .where(ConsentRecord.user_id == user.id, ConsentRecord.withdrawn_at.is_(None))
+        select(ConsentRecord).where(
+            ConsentRecord.user_id == user.id, ConsentRecord.withdrawn_at.is_(None)
+        )
     )
     for consent in result.scalars():
         consent.withdrawn_at = utcnow()
@@ -95,9 +96,7 @@ async def export_data(
     referenced by their download URL (they can be fetched separately).
     """
     # Consent records
-    consent_result = await db.execute(
-        select(ConsentRecord).where(ConsentRecord.user_id == user.id)
-    )
+    consent_result = await db.execute(select(ConsentRecord).where(ConsentRecord.user_id == user.id))
     consents = [
         {
             "policy_version": c.policy_version,

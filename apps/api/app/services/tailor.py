@@ -60,9 +60,7 @@ async def execute_tailor_job(db: AsyncSession, run_id: str) -> None:
         # 2. Get allow_ai_projects setting
         from app.db.models.profile import Profile
 
-        profile_result = await db.execute(
-            select(Profile).where(Profile.user_id == run.user_id)
-        )
+        profile_result = await db.execute(select(Profile).where(Profile.user_id == run.user_id))
         profile = profile_result.scalar_one_or_none()
         allow_ai_projects = profile.allow_ai_projects if profile else False
 
@@ -87,7 +85,9 @@ async def execute_tailor_job(db: AsyncSession, run_id: str) -> None:
         filename = f"Resume_{run.id[:8]}.docx"
         storage_key = generate_storage_key(run.user_id, run.id, filename)
         await storage.upload(
-            docx_bytes, storage_key, content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            docx_bytes,
+            storage_key,
+            content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         )
 
         # 7. Update run with success
@@ -184,13 +184,17 @@ def _score_tailored(tailored: dict, jd_text: str) -> dict:
     resume_text = " ".join(resume_text_parts)
 
     # Compute scores
-    keyword_pct, term_pct, missing_keywords, matched_keywords = compute_keyword_match(jd_text, resume_text)
+    keyword_pct, term_pct, missing_keywords, matched_keywords = compute_keyword_match(
+        jd_text, resume_text
+    )
     skills_pct, skills_matched, skills_missing = compute_skills_match(jd_text, skills_list)
 
     experience_bullets = [
         b for exp in editable.get("experience", []) for b in exp.get("bullets", [])
     ]
-    experience_pct, covered_resp, uncovered_resp = compute_experience_relevance(jd_text, experience_bullets)
+    experience_pct, covered_resp, uncovered_resp = compute_experience_relevance(
+        jd_text, experience_bullets
+    )
 
     overall = min(
         keyword_pct * 0.35 + skills_pct * 0.25 + term_pct * 0.10 + experience_pct * 0.30,

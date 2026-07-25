@@ -130,9 +130,7 @@ async def _get_active_subscription(db: AsyncSession, user_id: str) -> Subscripti
 
 
 async def _get_or_create_credit_balance(db: AsyncSession, user_id: str) -> CreditBalance:
-    result = await db.execute(
-        select(CreditBalance).where(CreditBalance.user_id == user_id)
-    )
+    result = await db.execute(select(CreditBalance).where(CreditBalance.user_id == user_id))
     credit = result.scalar_one_or_none()
     if not credit:
         credit = CreditBalance(id=new_uuid(), user_id=user_id, balance=0)

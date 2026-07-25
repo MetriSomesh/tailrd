@@ -5,7 +5,9 @@ from __future__ import annotations
 from httpx import AsyncClient
 
 
-async def _signup_and_get_client(client: AsyncClient, email: str = "profile@test.com") -> AsyncClient:
+async def _signup_and_get_client(
+    client: AsyncClient, email: str = "profile@test.com"
+) -> AsyncClient:
     """Helper: sign up a user so the client has auth cookies."""
     await client.post(
         "/api/v1/auth/signup",
@@ -57,7 +59,11 @@ class TestEducations:
         r = await client.put(
             "/api/v1/profile/educations",
             json=[
-                {"degree": "B.S. Computer Science", "institution": "DY Patil", "dates": "2022-2025"},
+                {
+                    "degree": "B.S. Computer Science",
+                    "institution": "DY Patil",
+                    "dates": "2022-2025",
+                },
                 {"degree": "High School", "institution": "Some School", "dates": "2020-2022"},
             ],
         )
@@ -190,7 +196,14 @@ class TestBuildBaseResume:
         )
         await client.put(
             "/api/v1/profile/experiences",
-            json=[{"title": "SWE", "company": "Google", "dates": "2024-Present", "bullets": ["Did stuff."]}],
+            json=[
+                {
+                    "title": "SWE",
+                    "company": "Google",
+                    "dates": "2024-Present",
+                    "bullets": ["Did stuff."],
+                }
+            ],
         )
         await client.put(
             "/api/v1/profile/skills",

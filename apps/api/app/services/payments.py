@@ -29,7 +29,9 @@ log = get_logger(__name__)
 
 class PaymentProvider(ABC):
     @abstractmethod
-    async def create_order(self, amount_paise: int, currency: str = "INR", notes: dict | None = None) -> dict:
+    async def create_order(
+        self, amount_paise: int, currency: str = "INR", notes: dict | None = None
+    ) -> dict:
         """Create a payment order. Returns provider-specific order data."""
         ...
 
@@ -52,7 +54,9 @@ class PaymentProvider(ABC):
 class MockPaymentProvider(PaymentProvider):
     """Deterministic mock. No network, always succeeds."""
 
-    async def create_order(self, amount_paise: int, currency: str = "INR", notes: dict | None = None) -> dict:
+    async def create_order(
+        self, amount_paise: int, currency: str = "INR", notes: dict | None = None
+    ) -> dict:
         return {
             "id": f"order_mock_{uuid.uuid4().hex[:12]}",
             "amount": amount_paise,
@@ -84,7 +88,9 @@ class RazorpayPaymentProvider(PaymentProvider):
         self._key_secret = settings.RAZORPAY_KEY_SECRET
         self._base_url = "https://api.razorpay.com/v1"
 
-    async def create_order(self, amount_paise: int, currency: str = "INR", notes: dict | None = None) -> dict:
+    async def create_order(
+        self, amount_paise: int, currency: str = "INR", notes: dict | None = None
+    ) -> dict:
         import httpx
 
         try:
@@ -106,9 +112,7 @@ class RazorpayPaymentProvider(PaymentProvider):
         import hmac
 
         msg = f"{order_id}|{payment_id}".encode()
-        expected = hmac.HMAC(
-            (self._key_secret or "").encode(), msg, hashlib.sha256
-        ).hexdigest()
+        expected = hmac.HMAC((self._key_secret or "").encode(), msg, hashlib.sha256).hexdigest()
         return hmac.compare_digest(expected, signature)
 
     async def create_subscription(self, plan_id: str, user_email: str) -> dict:

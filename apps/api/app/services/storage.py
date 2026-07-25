@@ -18,7 +18,9 @@ log = get_logger(__name__)
 
 class StorageBackend(ABC):
     @abstractmethod
-    async def upload(self, data: bytes, key: str, content_type: str = "application/octet-stream") -> str:
+    async def upload(
+        self, data: bytes, key: str, content_type: str = "application/octet-stream"
+    ) -> str:
         """Upload bytes. Returns the storage key."""
         ...
 
@@ -40,7 +42,9 @@ class LocalStorageBackend(StorageBackend):
         self._root = Path(settings.STORAGE_LOCAL_DIR)
         self._root.mkdir(parents=True, exist_ok=True)
 
-    async def upload(self, data: bytes, key: str, content_type: str = "application/octet-stream") -> str:
+    async def upload(
+        self, data: bytes, key: str, content_type: str = "application/octet-stream"
+    ) -> str:
         path = self._root / key
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)
@@ -79,7 +83,9 @@ class S3StorageBackend(StorageBackend):
         )
         self._bucket = settings.S3_BUCKET
 
-    async def upload(self, data: bytes, key: str, content_type: str = "application/octet-stream") -> str:
+    async def upload(
+        self, data: bytes, key: str, content_type: str = "application/octet-stream"
+    ) -> str:
         try:
             self._client.put_object(
                 Bucket=self._bucket,

@@ -40,20 +40,28 @@ class Profile(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     # Relationships (selectin = eager load with the parent query, avoids greenlet issues)
     educations: Mapped[list[Education]] = relationship(
-        back_populates="profile", cascade="all, delete-orphan",
-        order_by="Education.sort_order", lazy="selectin"
+        back_populates="profile",
+        cascade="all, delete-orphan",
+        order_by="Education.sort_order",
+        lazy="selectin",
     )
     experiences: Mapped[list[Experience]] = relationship(
-        back_populates="profile", cascade="all, delete-orphan",
-        order_by="Experience.sort_order", lazy="selectin"
+        back_populates="profile",
+        cascade="all, delete-orphan",
+        order_by="Experience.sort_order",
+        lazy="selectin",
     )
     projects: Mapped[list[Project]] = relationship(
-        back_populates="profile", cascade="all, delete-orphan",
-        order_by="Project.sort_order", lazy="selectin"
+        back_populates="profile",
+        cascade="all, delete-orphan",
+        order_by="Project.sort_order",
+        lazy="selectin",
     )
     skills: Mapped[list[SkillCategory]] = relationship(
-        back_populates="profile", cascade="all, delete-orphan",
-        order_by="SkillCategory.sort_order", lazy="selectin"
+        back_populates="profile",
+        cascade="all, delete-orphan",
+        order_by="SkillCategory.sort_order",
+        lazy="selectin",
     )
 
     @property

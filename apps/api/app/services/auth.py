@@ -252,9 +252,7 @@ async def refresh_tokens(
     in that family are revoked (the user's device was likely compromised).
     """
     token_hash = hash_token(refresh_token)
-    result = await db.execute(
-        select(Session).where(Session.refresh_token_hash == token_hash)
-    )
+    result = await db.execute(select(Session).where(Session.refresh_token_hash == token_hash))
     session = result.scalar_one_or_none()
 
     if not session:
@@ -301,9 +299,7 @@ async def _revoke_family(db: AsyncSession, family_id: str) -> None:
 async def revoke_session(db: AsyncSession, *, refresh_token: str) -> None:
     """Explicitly revoke a single session (logout)."""
     token_hash = hash_token(refresh_token)
-    result = await db.execute(
-        select(Session).where(Session.refresh_token_hash == token_hash)
-    )
+    result = await db.execute(select(Session).where(Session.refresh_token_hash == token_hash))
     session = result.scalar_one_or_none()
     if session and not session.is_revoked:
         session.revoked_at = utcnow()

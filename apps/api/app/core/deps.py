@@ -62,9 +62,7 @@ async def get_verified_user(
     profile/settings (which you need before verifying).
     """
     if not user.is_email_verified:
-        raise EmailNotVerifiedError(
-            "Please verify your email before using this feature."
-        )
+        raise EmailNotVerifiedError("Please verify your email before using this feature.")
     return user
 
 

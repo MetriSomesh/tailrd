@@ -125,7 +125,9 @@ async def parse_resume_upload(
     # Read with size guard
     content = await file.read()
     if len(content) > settings.MAX_UPLOAD_BYTES:
-        raise PayloadTooLargeError(f"File exceeds {settings.MAX_UPLOAD_BYTES // 1024 // 1024} MB limit.")
+        raise PayloadTooLargeError(
+            f"File exceeds {settings.MAX_UPLOAD_BYTES // 1024 // 1024} MB limit."
+        )
 
     # Extract text
     ext = (file.filename or "").rsplit(".", 1)[-1].lower()

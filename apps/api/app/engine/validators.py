@@ -20,7 +20,7 @@ def load_json_safe(path):
         sys.exit(1)
 
     try:
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
     except json.JSONDecodeError as e:
         print(f"ERROR: Invalid JSON in {path}: {e}", file=sys.stderr)
@@ -47,7 +47,7 @@ def load_text_safe(path):
         sys.exit(1)
 
     try:
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, "r", encoding="utf-8") as f:
             content = f.read()
         if not content.strip():
             print(f"WARNING: File is empty: {path}", file=sys.stderr)
@@ -75,88 +75,88 @@ def validate_resume_schema(data):
     if not isinstance(data, dict):
         return ["Root element must be a JSON object"]
 
-    if 'immutable' not in data:
+    if "immutable" not in data:
         errors.append("Missing required key: 'immutable'")
-    if 'editable' not in data:
+    if "editable" not in data:
         errors.append("Missing required key: 'editable'")
 
     if errors:
         return errors  # Can't validate further without these
 
     # Validate immutable section
-    immutable = data['immutable']
+    immutable = data["immutable"]
     if not isinstance(immutable, dict):
         errors.append("'immutable' must be an object")
     else:
-        if 'name' not in immutable:
+        if "name" not in immutable:
             errors.append("Missing 'immutable.name'")
-        if 'contact' not in immutable:
+        if "contact" not in immutable:
             errors.append("Missing 'immutable.contact'")
-        elif not isinstance(immutable['contact'], dict):
+        elif not isinstance(immutable["contact"], dict):
             errors.append("'immutable.contact' must be an object")
         else:
-            if 'email' not in immutable['contact']:
+            if "email" not in immutable["contact"]:
                 errors.append("Missing 'immutable.contact.email'")
-        if 'education' not in immutable:
+        if "education" not in immutable:
             errors.append("Missing 'immutable.education'")
-        elif not isinstance(immutable['education'], list):
+        elif not isinstance(immutable["education"], list):
             errors.append("'immutable.education' must be an array")
 
     # Validate editable section
-    editable = data['editable']
+    editable = data["editable"]
     if not isinstance(editable, dict):
         errors.append("'editable' must be an object")
     else:
         # About
-        if 'about' not in editable:
+        if "about" not in editable:
             errors.append("Missing 'editable.about'")
-        elif not isinstance(editable['about'], str):
+        elif not isinstance(editable["about"], str):
             errors.append("'editable.about' must be a string")
-        elif len(editable['about'].strip()) == 0:
+        elif len(editable["about"].strip()) == 0:
             errors.append("'editable.about' is empty")
 
         # Skills
-        if 'skills' not in editable:
+        if "skills" not in editable:
             errors.append("Missing 'editable.skills'")
-        elif not isinstance(editable['skills'], (list, dict)):
+        elif not isinstance(editable["skills"], (list, dict)):
             errors.append("'editable.skills' must be a list or categorized dict")
-        elif isinstance(editable['skills'], dict):
-            for cat, items in editable['skills'].items():
+        elif isinstance(editable["skills"], dict):
+            for cat, items in editable["skills"].items():
                 if not isinstance(items, list):
                     errors.append(f"Skills category '{cat}' must contain a list")
 
         # Experience
-        if 'experience' not in editable:
+        if "experience" not in editable:
             errors.append("Missing 'editable.experience'")
-        elif not isinstance(editable['experience'], list):
+        elif not isinstance(editable["experience"], list):
             errors.append("'editable.experience' must be an array")
         else:
-            for i, exp in enumerate(editable['experience']):
+            for i, exp in enumerate(editable["experience"]):
                 if not isinstance(exp, dict):
                     errors.append(f"experience[{i}] must be an object")
                     continue
-                for field in ('title', 'company', 'dates'):
+                for field in ("title", "company", "dates"):
                     if field not in exp:
                         errors.append(f"experience[{i}] missing '{field}'")
-                if 'bullets' not in exp:
+                if "bullets" not in exp:
                     errors.append(f"experience[{i}] missing 'bullets'")
-                elif not isinstance(exp['bullets'], list):
+                elif not isinstance(exp["bullets"], list):
                     errors.append(f"experience[{i}].bullets must be an array")
-                elif len(exp['bullets']) == 0:
+                elif len(exp["bullets"]) == 0:
                     errors.append(f"experience[{i}].bullets is empty")
 
         # Projects
-        if 'projects' in editable:
-            if not isinstance(editable['projects'], list):
+        if "projects" in editable:
+            if not isinstance(editable["projects"], list):
                 errors.append("'editable.projects' must be an array")
             else:
-                for i, proj in enumerate(editable['projects']):
+                for i, proj in enumerate(editable["projects"]):
                     if not isinstance(proj, dict):
                         errors.append(f"projects[{i}] must be an object")
                         continue
-                    if 'title' not in proj:
+                    if "title" not in proj:
                         errors.append(f"projects[{i}] missing 'title'")
-                    if 'description' not in proj:
+                    if "description" not in proj:
                         errors.append(f"projects[{i}] missing 'description'")
 
     return errors
