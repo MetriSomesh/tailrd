@@ -1,0 +1,65 @@
+# ---- Secrets ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+service-account*.json
+
+# ---- Node ----
+node_modules/
+.next/
+out/
+build/
+dist/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+.vercel/
+
+# ---- Playwright ----
+.playwright/
+playwright-report/
+test-results/
+blob-report/
+
+# ---- Python ----
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# ---- Local runtime data ----
+_storage/
+_agent_workspaces/
+*.db
+*.sqlite
+*.sqlite3
+tailrd_dev.db*
+
+# ---- Logs ----
+*.log
+npm-debug.log*
+logs/
+
+# ---- OS / editor ----
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+*.swo
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# ---- Impeccable working artifacts (generated per session) ----
+.impeccable/cache/
+.impeccable/sessions/

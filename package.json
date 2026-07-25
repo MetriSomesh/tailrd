@@ -1,0 +1,26 @@
+{
+  "name": "tailrd",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tailrd — AI resume tailoring as a service",
+  "workspaces": [
+    "apps/web"
+  ],
+  "engines": {
+    "node": ">=20.11",
+    "npm": ">=10"
+  },
+  "scripts": {
+    "dev": "npm run dev --workspace @tailrd/web",
+    "build": "npm run build --workspace @tailrd/web",
+    "start": "npm run start --workspace @tailrd/web",
+    "lint": "npm run lint --workspace @tailrd/web",
+    "typecheck": "npm run typecheck --workspace @tailrd/web",
+    "test:e2e": "npm run test:e2e --workspace @tailrd/web",
+    "api:dev": "cd apps/api && .venv/Scripts/python -m uvicorn app.main:app --reload --port 8000",
+    "api:test": "cd apps/api && .venv/Scripts/python -m pytest tests/ -v",
+    "api:lint": "cd apps/api && .venv/Scripts/python -m ruff check app tests",
+    "api:fmt": "cd apps/api && .venv/Scripts/python -m ruff format app tests",
+    "api:types": "cd apps/api && .venv/Scripts/python -m mypy app"
+  }
+}
