@@ -134,15 +134,14 @@ export function ScoreGauge({
         />
       </svg>
 
-      {/* Centred readout. Grid-centred on the wrapper, so it cannot drift. */}
+      {/* Centred readout. Grid-centred on the wrapper, so it cannot drift.
+          Uses the display face (not mono) so the decimal point sits tight
+          instead of floating in a full-width tabular cell. */}
       <div className="relative z-10 flex flex-col items-center leading-none">
-        <span
-          className={cn("font-mono font-semibold tabular-nums text-fg", valueSize)}
-          style={{ letterSpacing: "-0.04em" }}
-        >
+        <span className={cn("type-display text-fg", valueSize)}>
           {progress.toFixed(progress < 100 && score % 1 !== 0 ? 1 : 0)}
         </span>
-        <span className={cn("mt-1 text-fg-tertiary", labelSize)}>{label}</span>
+        <span className={cn("mt-1.5 text-fg-tertiary", labelSize)}>{label}</span>
       </div>
     </div>
   );

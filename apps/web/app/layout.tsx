@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
+import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
 import { ThemeScript } from "@/components/theme/theme-script";
 import { SITE } from "@/lib/site";
 import "./globals.css";
 
+// Body + UI face. Geist reads clean and modern without being Inter.
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -17,10 +18,13 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
-const instrumentSerif = Instrument_Serif({
-  variable: "--font-instrument-serif",
+// Display face. Space Grotesk has a technical, engineered character that suits
+// an ATS/resume tool for engineers. Deliberately NOT a serif: Instrument Serif
+// and Fraunces are the two most overused AI-default display serifs.
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-display",
   subsets: ["latin"],
-  weight: "400",
+  weight: ["500", "600", "700"],
   display: "swap",
 });
 
@@ -92,7 +96,7 @@ export default function RootLayout({
       suppressHydrationWarning
       // Font variables live on <html>, not <body>: the design tokens in
       // globals.css reference them from :root, so they must be in scope there.
-      className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable}`}
+      className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable}`}
     >
       <head>
         {/* Applies the stored theme before first paint to avoid a flash. */}

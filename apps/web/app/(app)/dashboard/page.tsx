@@ -189,7 +189,7 @@ function Stat({
         </span>
       </div>
       <div className="mt-2.5">
-        <span className="font-mono text-2xl font-semibold tabular-nums text-fg">{value}</span>
+        <span className="type-display text-2xl text-fg">{value}</span>
         <span className="mt-0.5 block text-xs text-fg-quaternary">{hint}</span>
       </div>
     </div>

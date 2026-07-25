@@ -14,7 +14,7 @@
 
 @theme {
   /* ---- Typography ---------------------------------------------------- */
-  --font-display: var(--font-instrument-serif), ui-serif, Georgia, serif;
+  --font-display: var(--font-display), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", monospace;
 
@@ -361,12 +361,13 @@ button:disabled {
 }
 
 /* NOTE: must not be named `display` — that collides with the CSS display property
-   and Tailwind silently drops it. */
+   and Tailwind silently drops it. Space Grotesk wants weight 600 and slightly
+   less-aggressive tracking than a serif. */
 @utility type-display {
   font-family: var(--font-display);
-  font-weight: 400;
-  letter-spacing: var(--tracking-tighter);
-  line-height: 0.95;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1;
 }
 
 /* Screen-reader-only, but focusable (skip links) */
