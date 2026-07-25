@@ -10,6 +10,7 @@ const THEME_STORAGE_KEY = "tailrd-theme";
 // Kept as a string so it can be injected verbatim without a bundler round-trip.
 const script = `
 (function () {
+  var root = document.documentElement;
   try {
     var stored = localStorage.getItem('${THEME_STORAGE_KEY}');
     var theme;
@@ -18,10 +19,13 @@ const script = `
     } else {
       theme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
     }
-    document.documentElement.setAttribute('data-theme', theme);
+    root.setAttribute('data-theme', theme);
   } catch (e) {
-    document.documentElement.setAttribute('data-theme', 'dark');
+    root.setAttribute('data-theme', 'dark');
   }
+  // Marks that JS is running. Scroll-reveal starts hidden ONLY under this class,
+  // so content stays visible if JS is disabled or fails to load.
+  root.classList.add('js');
 })();
 `;
 

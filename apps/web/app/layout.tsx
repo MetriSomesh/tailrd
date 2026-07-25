@@ -87,14 +87,18 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      // Font variables live on <html>, not <body>: the design tokens in
+      // globals.css reference them from :root, so they must be in scope there.
+      className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable}`}
+    >
       <head>
         {/* Applies the stored theme before first paint to avoid a flash. */}
         <ThemeScript />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable}`}
-      >
+      <body>
         <a href="#main" className="sr-only-focusable absolute top-4 left-4 z-100 rounded-md bg-surface-overlay px-4 py-2 text-sm font-medium shadow-lg">
           Skip to content
         </a>

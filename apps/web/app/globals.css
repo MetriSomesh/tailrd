@@ -81,11 +81,14 @@
   --surface-inverse: oklch(0.965 0.004 260);   /* inverted chips */
 
   /* Text — four deliberate steps, not a gradient of greys */
-  --text-primary: oklch(0.972 0.004 260);
-  --text-secondary: oklch(0.775 0.010 260);
-  --text-tertiary: oklch(0.605 0.012 260);
-  --text-quaternary: oklch(0.595 0.012 260);
-  --text-inverse: oklch(0.165 0.008 260);
+  --fg-primary: oklch(0.972 0.004 260);
+  --fg-secondary: oklch(0.775 0.010 260);
+  /* Tertiary and quaternary carry real copy (eyebrows, page subtitles, hints),
+     so both must clear 4.5:1 on --surface-base AND --surface-raised.
+     Verified by the axe audit in e2e/. Do not darken these. */
+  --fg-tertiary: oklch(0.678 0.012 260);
+  --fg-quaternary: oklch(0.642 0.012 260);
+  --fg-inverse: oklch(0.165 0.008 260);
 
   /* Borders — mostly invisible, revealed on interaction */
   --border-subtle: oklch(0.262 0.010 260);
@@ -136,11 +139,11 @@
   --surface-sunken: oklch(0.962 0.004 84);
   --surface-inverse: oklch(0.192 0.009 260);
 
-  --text-primary: oklch(0.208 0.010 260);
-  --text-secondary: oklch(0.412 0.011 260);
-  --text-tertiary: oklch(0.548 0.012 260);
-  --text-quaternary: oklch(0.545 0.011 260);
-  --text-inverse: oklch(0.978 0.003 84);
+  --fg-primary: oklch(0.208 0.010 260);
+  --fg-secondary: oklch(0.412 0.011 260);
+  --fg-tertiary: oklch(0.548 0.012 260);
+  --fg-quaternary: oklch(0.545 0.011 260);
+  --fg-inverse: oklch(0.978 0.003 84);
 
   --border-subtle: oklch(0.922 0.004 84);
   --border-default: oklch(0.868 0.005 84);
@@ -184,11 +187,11 @@
   --color-surface-sunken: var(--surface-sunken);
   --color-surface-inverse: var(--surface-inverse);
 
-  --color-fg: var(--text-primary);
-  --color-fg-secondary: var(--text-secondary);
-  --color-fg-tertiary: var(--text-tertiary);
-  --color-fg-quaternary: var(--text-quaternary);
-  --color-fg-inverse: var(--text-inverse);
+  --color-fg: var(--fg-primary);
+  --color-fg-secondary: var(--fg-secondary);
+  --color-fg-tertiary: var(--fg-tertiary);
+  --color-fg-quaternary: var(--fg-quaternary);
+  --color-fg-inverse: var(--fg-inverse);
 
   --color-border-subtle: var(--border-subtle);
   --color-border-default: var(--border-default);
@@ -252,7 +255,7 @@ html {
 body {
   margin: 0;
   background-color: var(--surface-base);
-  color: var(--text-primary);
+  color: var(--fg-primary);
   font-family: var(--font-sans);
   font-size: var(--text-base);
   line-height: var(--leading-normal);
@@ -291,7 +294,7 @@ p {
 /* Selection uses the accent so it feels part of the system */
 ::selection {
   background-color: var(--accent-subtle);
-  color: var(--text-primary);
+  color: var(--fg-primary);
 }
 
 /* Scrollbars — themed, unobtrusive */
@@ -354,14 +357,16 @@ button:disabled {
   font-weight: 500;
   letter-spacing: var(--tracking-widest);
   text-transform: uppercase;
-  color: var(--text-tertiary);
+  color: var(--fg-tertiary);
 }
 
-@utility display {
+/* NOTE: must not be named `display` — that collides with the CSS display property
+   and Tailwind silently drops it. */
+@utility type-display {
   font-family: var(--font-display);
   font-weight: 400;
   letter-spacing: var(--tracking-tighter);
-  line-height: var(--leading-none);
+  line-height: 0.95;
 }
 
 /* Screen-reader-only, but focusable (skip links) */
@@ -394,7 +399,7 @@ button:disabled {
 .prose-custom h1 {
   font-size: var(--text-2xl);
   font-weight: 500;
-  color: var(--text-primary);
+  color: var(--fg-primary);
   margin-top: 0;
   margin-bottom: 1rem;
 }
@@ -402,19 +407,19 @@ button:disabled {
 .prose-custom h2 {
   font-size: var(--text-xl);
   font-weight: 500;
-  color: var(--text-primary);
+  color: var(--fg-primary);
   margin-top: 2.5rem;
   margin-bottom: 0.75rem;
 }
 
 .prose-custom p {
-  color: var(--text-secondary);
+  color: var(--fg-secondary);
   margin-bottom: 1rem;
   line-height: var(--leading-relaxed);
 }
 
 .prose-custom ul, .prose-custom ol {
-  color: var(--text-secondary);
+  color: var(--fg-secondary);
   margin-bottom: 1rem;
   padding-left: 1.5rem;
 }
@@ -435,6 +440,208 @@ button:disabled {
 }
 
 .prose-custom strong {
-  color: var(--text-primary);
+  color: var(--fg-primary);
   font-weight: 500;
+}
+
+
+/* ==========================================================================
+   Visual texture — the material the interface is made of.
+
+   Three layers, all subtle, all purposeful:
+   1. grid       — a faint engineering grid, signals precision
+   2. glow       — a single soft radial behind focal points, gives depth
+   3. hairline   — 1px top-edge highlight on raised surfaces, reads as material
+   ========================================================================== */
+
+@utility bg-grid {
+  background-image:
+    linear-gradient(to right, var(--border-subtle) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--border-subtle) 1px, transparent 1px);
+  background-size: 64px 64px;
+  /* Fade the grid out toward the edges so it never fights the content */
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 20%, transparent 75%);
+}
+
+@utility bg-dots {
+  background-image: radial-gradient(var(--border-default) 1px, transparent 1px);
+  background-size: 24px 24px;
+  mask-image: radial-gradient(ellipse 70% 50% at 50% 50%, black 10%, transparent 70%);
+}
+
+/* Soft accent glow. Sits behind a focal element, never over content. */
+@utility glow-accent {
+  position: absolute;
+  border-radius: var(--radius-full);
+  background: radial-gradient(circle, var(--accent) 0%, transparent 70%);
+  opacity: 0.12;
+  filter: blur(64px);
+  pointer-events: none;
+}
+
+/* Top hairline: the single detail that makes a surface read as physical. */
+@utility hairline-top {
+  position: relative;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset-inline: 1rem;
+    top: 0;
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      color-mix(in oklch, var(--fg-primary) 14%, transparent),
+      transparent
+    );
+    pointer-events: none;
+  }
+}
+
+/* ==========================================================================
+   Motion — keyframes used by the reveal and stagger components
+   ========================================================================== */
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes draw-ring {
+  from { stroke-dashoffset: var(--ring-circumference); }
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes pulse-ring {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.15; transform: scale(1.06); }
+}
+
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+
+/* Skeleton loading shimmer */
+@utility skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-raised) 25%,
+    var(--surface-overlay) 50%,
+    var(--surface-raised) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+  border-radius: var(--radius-md);
+}
+
+/* ==========================================================================
+   Fluid type — scales smoothly between mobile and desktop without breakpoints
+   ========================================================================== */
+
+@utility text-fluid-hero {
+  font-size: clamp(2.5rem, 8vw, 5.5rem);
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+}
+
+@utility text-fluid-h2 {
+  font-size: clamp(1.75rem, 4.5vw, 3rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+@utility text-fluid-lead {
+  font-size: clamp(1rem, 1.6vw, 1.25rem);
+  line-height: 1.6;
+}
+
+/* ==========================================================================
+   Layout primitive — consistent page gutter at every breakpoint
+   ========================================================================== */
+
+@utility container-page {
+  width: 100%;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+
+  @media (width >= 640px) {
+    padding-inline: 2rem;
+  }
+  @media (width >= 1024px) {
+    padding-inline: 3rem;
+  }
+  max-width: 80rem;
+}
+
+
+/* ==========================================================================
+   Scroll reveal
+
+   The hidden state is scoped to `html.js` (set pre-paint by ThemeScript) so
+   content is never trapped at opacity 0 when JavaScript is unavailable.
+   ========================================================================== */
+
+.reveal {
+  transition:
+    opacity var(--duration-slow) var(--ease-out-quart),
+    transform var(--duration-slow) var(--ease-out-quart);
+}
+
+html.js .reveal[data-reveal="out"] {
+  opacity: 0;
+  transform: translateY(14px);
+}
+
+.reveal[data-reveal="in"] {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.js .reveal[data-reveal="out"] {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+
+/* ==========================================================================
+   Placeholders
+
+   Browsers apply their own opacity to ::placeholder, which silently darkens
+   whatever colour we set and pushed it under 4.5:1. Force opacity to 1 and
+   drive the colour from a token that is verified to pass.
+   ========================================================================== */
+
+::placeholder {
+  color: var(--fg-tertiary);
+  opacity: 1;
 }

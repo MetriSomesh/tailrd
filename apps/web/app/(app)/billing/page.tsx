@@ -1,83 +1,148 @@
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Reveal } from "@/components/motion/reveal";
+import { Button, ButtonLink } from "@/components/ui/button";
+import { cn } from "@/lib/cn";
 import { PRICING, formatPaise } from "@/lib/site";
 import { Check } from "lucide-react";
 
-/**
- * Billing page — shows current plan, usage, and upgrade options.
- */
-export default function BillingPage() {
-  // Mock current state
-  const _currentPlan = "free";
-  const usage = { free_used: 1, free_limit: 3, credit_balance: 0 };
+const usage = { freeUsed: 1, freeLimit: 3, credits: 0, hasSubscription: false };
 
-  const plans = [
-    { ...PRICING.perResume, features: ["1 resume credit", "Never expires", "₹29 per use"] },
-    { ...PRICING.weekly, features: ["Unlimited for 7 days", "15/day fair use", "Cancel anytime"] },
-    { ...PRICING.monthly, features: ["Unlimited for 30 days", "15/day fair use", "Best value"] },
-  ];
+const options = [
+  {
+    id: "per",
+    name: PRICING.perResume.name,
+    pricePaise: PRICING.perResume.pricePaise,
+    cadence: "once",
+    features: ["1 resume credit", "Never expires"],
+    cta: "Buy credit",
+  },
+  {
+    id: "weekly",
+    name: PRICING.weekly.name,
+    pricePaise: PRICING.weekly.pricePaise,
+    cadence: "week",
+    features: ["Unlimited 7 days", "15 a day fair use"],
+    cta: "Subscribe",
+    featured: true,
+  },
+  {
+    id: "monthly",
+    name: PRICING.monthly.name,
+    pricePaise: PRICING.monthly.pricePaise,
+    cadence: "month",
+    features: ["Unlimited 30 days", "Best value"],
+    cta: "Subscribe",
+  },
+];
+
+export default function BillingPage() {
+  const pct = Math.round((usage.freeUsed / usage.freeLimit) * 100);
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-medium text-fg">Billing</h1>
-        <p className="mt-1 text-sm text-fg-tertiary">Manage your plan and credits.</p>
-      </div>
+      <Reveal>
+        <h1 className="type-display text-3xl text-fg sm:text-4xl">Billing</h1>
+        <p className="mt-1.5 text-sm text-fg-tertiary">Your plan, usage and credits.</p>
+      </Reveal>
 
-      {/* Current usage */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Current usage</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-baseline gap-6">
+      {/* Current usage with a real progress bar */}
+      <Reveal delay={70}>
+        <section className="hairline-top rounded-2xl bg-surface-raised p-6 ring-1 ring-border-subtle">
+          <div className="flex flex-wrap items-start justify-between gap-6">
             <div>
-              <p className="text-3xl font-semibold tabular-nums text-fg">{usage.free_used}/{usage.free_limit}</p>
-              <p className="text-xs text-fg-quaternary">free resumes used this month</p>
+              <h2 className="text-sm font-medium text-fg">Current plan</h2>
+              <p className="mt-1 font-mono text-2xl font-semibold text-fg">
+                {usage.hasSubscription ? "Unlimited" : "Free"}
+              </p>
             </div>
-            <div className="h-10 w-px bg-border-subtle" />
-            <div>
-              <p className="text-3xl font-semibold tabular-nums text-fg">{usage.credit_balance}</p>
-              <p className="text-xs text-fg-quaternary">credits available</p>
+            <div className="text-right">
+              <p className="text-2xs uppercase tracking-widest text-fg-tertiary">Credits</p>
+              <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-fg">
+                {usage.credits}
+              </p>
             </div>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Plans */}
-      <div>
-        <h2 className="mb-4 text-lg font-medium text-fg">Upgrade</h2>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {plans.map((plan) => (
-            <Card key={plan.id} className="flex flex-col justify-between">
-              <div>
-                <CardHeader>
-                  <CardTitle>{plan.name}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-semibold text-fg">{formatPaise(plan.pricePaise)}</p>
-                  <p className="mt-0.5 text-xs text-fg-quaternary">
-                    {plan.cadence === "one-time" ? "one-time" : `per ${plan.cadence}`}
-                  </p>
-                  <ul className="mt-4 space-y-2">
-                    {plan.features.map((f) => (
-                      <li key={f} className="flex items-center gap-2 text-xs text-fg-secondary">
-                        <Check className="h-3.5 w-3.5 text-success flex-shrink-0" />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </div>
-              <div className="mt-5 px-5 pb-5">
-                <Button variant="secondary" size="sm" className="w-full">
-                  {plan.cadence === "one-time" ? "Buy credit" : "Subscribe"}
+          <div className="mt-6 space-y-2">
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-xs text-fg-secondary">Free resumes this month</span>
+              <span className="font-mono text-xs tabular-nums text-fg-secondary">
+                {usage.freeUsed} / {usage.freeLimit}
+              </span>
+            </div>
+            <div
+              className="h-2 overflow-hidden rounded-full bg-border-subtle"
+              role="progressbar"
+              aria-valuenow={usage.freeUsed}
+              aria-valuemin={0}
+              aria-valuemax={usage.freeLimit}
+              aria-label="Free resume usage"
+            >
+              <div
+                className="h-full rounded-full bg-accent transition-[width] duration-slow"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <p className="text-2xs text-fg-quaternary">
+              {usage.freeLimit - usage.freeUsed} remaining. Resets on the 1st.
+            </p>
+          </div>
+        </section>
+      </Reveal>
+
+      {/* Upgrade options */}
+      <Reveal delay={140}>
+        <section>
+          <h2 className="text-sm font-medium text-fg">Add capacity</h2>
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+            {options.map((o) => (
+              <div
+                key={o.id}
+                className={cn(
+                  "hairline-top flex flex-col rounded-2xl p-5",
+                  o.featured
+                    ? "bg-surface-raised ring-2 ring-accent"
+                    : "bg-surface-raised/60 ring-1 ring-border-subtle",
+                )}
+              >
+                <h3 className="text-sm font-medium text-fg">{o.name}</h3>
+                <div className="mt-3 flex items-baseline gap-1.5">
+                  <span className="font-mono text-2xl font-semibold tabular-nums text-fg">
+                    {formatPaise(o.pricePaise)}
+                  </span>
+                  <span className="text-2xs text-fg-quaternary">/ {o.cadence}</span>
+                </div>
+                <ul className="mt-4 flex-1 space-y-2">
+                  {o.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2 text-xs text-fg-secondary">
+                      <Check
+                        className={cn(
+                          "mt-0.5 size-3 shrink-0",
+                          o.featured ? "text-accent" : "text-success",
+                        )}
+                      />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  variant={o.featured ? "primary" : "secondary"}
+                  size="sm"
+                  className="mt-5 w-full"
+                >
+                  {o.cta}
                 </Button>
               </div>
-            </Card>
-          ))}
-        </div>
-      </div>
+            ))}
+          </div>
+          <p className="mt-4 text-xs text-fg-quaternary">
+            Full plan details on the{" "}
+            <ButtonLink href="/pricing" variant="ghost" size="sm" className="h-auto px-1 py-0 underline">
+              pricing page
+            </ButtonLink>
+            .
+          </p>
+        </section>
+      </Reveal>
     </div>
   );
 }

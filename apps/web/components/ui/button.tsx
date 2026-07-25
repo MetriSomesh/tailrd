@@ -1,8 +1,42 @@
 import { cn } from "@/lib/cn";
-import { type ButtonHTMLAttributes, forwardRef } from "react";
+import Link from "next/link";
+import { type AnchorHTMLAttributes, type ButtonHTMLAttributes, forwardRef } from "react";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 type Size = "sm" | "md" | "lg";
+
+const base =
+  "inline-flex shrink-0 items-center justify-center whitespace-nowrap font-medium " +
+  "transition-[background-color,box-shadow,transform,color] duration-fast " +
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring " +
+  "active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50";
+
+const variantStyles: Record<Variant, string> = {
+  // Accent fill. The shadow is tinted with the accent so it reads as light, not dirt.
+  primary:
+    "bg-accent text-accent-contrast shadow-[0_1px_2px_0_oklch(0_0_0/0.24),0_6px_16px_-6px_var(--accent)] " +
+    "hover:bg-accent-hover hover:shadow-[0_1px_2px_0_oklch(0_0_0/0.24),0_10px_24px_-8px_var(--accent)] " +
+    "active:bg-accent-active",
+  secondary:
+    "bg-surface-raised text-fg ring-1 ring-inset ring-border-default " +
+    "hover:bg-surface-overlay hover:ring-border-strong",
+  ghost: "text-fg-secondary hover:bg-surface-raised hover:text-fg",
+  danger: "bg-danger-subtle text-danger ring-1 ring-inset ring-danger/25 hover:bg-danger/20",
+};
+
+const sizeStyles: Record<Size, string> = {
+  sm: "h-8 gap-1.5 rounded-lg px-3 text-xs",
+  md: "h-10 gap-2 rounded-lg px-4 text-sm",
+  lg: "h-12 gap-2.5 rounded-xl px-6 text-base",
+};
+
+function styles(variant: Variant, size: Size, className?: string) {
+  return cn(base, variantStyles[variant], sizeStyles[size], className);
+}
+
+// ---------------------------------------------------------------------------
+// Button
+// ---------------------------------------------------------------------------
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
@@ -10,55 +44,63 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   loading?: boolean;
 }
 
-const variantStyles: Record<Variant, string> = {
-  primary:
-    "bg-accent text-accent-contrast hover:bg-accent-hover active:bg-accent-active shadow-xs",
-  secondary:
-    "bg-surface-raised text-fg ring-1 ring-border-default ring-inset hover:bg-surface-overlay active:ring-border-strong",
-  ghost:
-    "text-fg-secondary hover:bg-surface-raised hover:text-fg active:bg-surface-overlay",
-  danger:
-    "bg-danger-subtle text-danger hover:bg-danger/20 active:bg-danger/30",
-};
-
-const sizeStyles: Record<Size, string> = {
-  sm: "h-8 px-3 text-xs gap-1.5 rounded-md",
-  md: "h-10 px-4 text-sm gap-2 rounded-lg",
-  lg: "h-12 px-6 text-base gap-2.5 rounded-lg",
-};
-
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = "primary", size = "md", loading, disabled, children, ...props }, ref) => {
+  ({ className, variant = "primary", size = "md", loading, disabled, children, ...props }, ref) => (
+    <button
+      ref={ref}
+      className={cn(styles(variant, size, className), loading && "pointer-events-none opacity-70")}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
+      {...props}
+    >
+      {loading && <Spinner />}
+      {children}
+    </button>
+  ),
+);
+Button.displayName = "Button";
+
+// ---------------------------------------------------------------------------
+// ButtonLink — same visuals, renders an <a>.
+//
+// Wrapping <Button> in an <a> produced broken layout (inline anchor around a
+// flex button). This renders the anchor itself, so sizing and alignment hold.
+// ---------------------------------------------------------------------------
+
+interface ButtonLinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
+  href: string;
+  variant?: Variant;
+  size?: Size;
+}
+
+export const ButtonLink = forwardRef<HTMLAnchorElement, ButtonLinkProps>(
+  ({ className, href, variant = "primary", size = "md", children, ...props }, ref) => {
+    const isInternal = href.startsWith("/");
+    const cls = styles(variant, size, className);
+
+    if (isInternal) {
+      return (
+        <Link ref={ref} href={href} className={cls} {...props}>
+          {children}
+        </Link>
+      );
+    }
     return (
-      <button
-        ref={ref}
-        className={cn(
-          "inline-flex items-center justify-center font-medium transition-all duration-fast",
-          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-          "disabled:opacity-50 disabled:pointer-events-none",
-          variantStyles[variant],
-          sizeStyles[size],
-          loading && "opacity-70 pointer-events-none",
-          className,
-        )}
-        disabled={disabled || loading}
-        aria-busy={loading}
-        {...props}
-      >
-        {loading && (
-          <svg
-            className="h-4 w-4 animate-spin"
-            viewBox="0 0 24 24"
-            fill="none"
-            aria-hidden="true"
-          >
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-          </svg>
-        )}
+      <a ref={ref} href={href} className={cls} {...props}>
         {children}
-      </button>
+      </a>
     );
   },
 );
-Button.displayName = "Button";
+ButtonLink.displayName = "ButtonLink";
+
+// ---------------------------------------------------------------------------
+
+function Spinner() {
+  return (
+    <svg className="size-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+    </svg>
+  );
+}
