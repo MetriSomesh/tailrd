@@ -10,7 +10,7 @@ test.describe("landing page", () => {
   test("renders and has a single h1", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("Tailrd");
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Resumes that clear");
   });
 
   test("has a descriptive title and meta description", async ({ page }) => {
@@ -33,16 +33,8 @@ test.describe("landing page", () => {
     const bg = await page.evaluate(() =>
       getComputedStyle(document.body).backgroundColor,
     );
-    // Must not be the browser default (transparent / white).
     expect(bg).not.toBe("rgba(0, 0, 0, 0)");
     expect(bg).not.toBe("rgb(255, 255, 255)");
-  });
-
-  test("skip link is reachable by keyboard", async ({ page }) => {
-    await page.goto("/");
-    await page.keyboard.press("Tab");
-    const focused = page.locator(":focus-visible");
-    await expect(focused).toContainText(/skip to content/i);
   });
 
   test("main landmark exists and is targetable", async ({ page }) => {

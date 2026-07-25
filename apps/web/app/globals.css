@@ -384,3 +384,56 @@ button:disabled {
     white-space: normal;
   }
 }
+
+
+/* ==========================================================================
+   Prose — for long-form content (legal pages, blog)
+   ========================================================================== */
+
+.prose-custom h1 {
+  font-size: var(--text-2xl);
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.prose-custom h2 {
+  font-size: var(--text-xl);
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-top: 2.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.prose-custom p {
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+  line-height: var(--leading-relaxed);
+}
+
+.prose-custom ul, .prose-custom ol {
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+
+.prose-custom li {
+  margin-bottom: 0.5rem;
+  line-height: var(--leading-relaxed);
+}
+
+.prose-custom a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.prose-custom a:hover {
+  color: var(--accent-hover);
+}
+
+.prose-custom strong {
+  color: var(--text-primary);
+  font-weight: 500;
+}
