@@ -114,6 +114,17 @@ export async function mockBackend(page: Page, data: MockBackendData = {}): Promi
     if (path === "/billing/usage") return route.fulfill({ json: usage });
     if (path === "/runs") return route.fulfill({ json: runs });
 
+    if (path === "/profile") {
+      return route.fulfill({
+        json: {
+          id: "p_test", full_name: null, phone: null, email: null, location: null,
+          linkedin_url: null, github_url: null, hook_line: null, allow_ai_projects: false,
+          onboarding_step: 0, is_complete: false,
+          educations: [], experiences: [], projects: [], skills: [],
+        },
+      });
+    }
+
     const runMatch = path.match(/^\/runs\/([^/]+)$/);
     if (runMatch) {
       const detail = details[runMatch[1]] ?? runs.find((r) => r.id === runMatch[1]) ?? {};

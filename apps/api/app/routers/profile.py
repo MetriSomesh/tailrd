@@ -133,9 +133,12 @@ async def parse_resume_upload(
     ext = (file.filename or "").rsplit(".", 1)[-1].lower()
     raw_text = _extract_text(content, ext)
 
-    # For now, return the raw text. Phase 4+ adds LLM-powered structured extraction.
-    # The frontend shows this text and lets the user fill in fields manually.
-    return ParsedResumeResult(raw_text=raw_text)
+    # Structured extraction via the configured LLM (heuristic fallback for mock /
+    # on failure). The user reviews and edits everything in the wizard.
+    from app.services.resume_parser import parse_resume
+
+    parsed = await parse_resume(raw_text)
+    return ParsedResumeResult(**parsed, raw_text=raw_text)
 
 
 def _extract_text(content: bytes, ext: str) -> str:

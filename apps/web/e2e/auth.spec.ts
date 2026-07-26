@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { expectNoA11yViolations } from "./helpers";
+import { expectNoA11yViolations, mockBackend } from "./helpers";
 
 test.describe("signup page", () => {
   test("renders the form (no 404)", async ({ page }) => {
@@ -66,15 +66,29 @@ test.describe("marketing to auth flow", () => {
   });
 });
 
-test.describe("onboarding", () => {
-  test("renders the welcome steps (no 404)", async ({ page }) => {
+test.describe("onboarding wizard", () => {
+  test.beforeEach(async ({ page }) => {
+    await mockBackend(page); // auth-gated + loads GET /profile
+  });
+
+  test("renders the wizard (no 404)", async ({ page }) => {
     const res = await page.goto("/onboarding");
     expect(res?.status()).toBeLessThan(400);
-    await expect(page.getByRole("heading", { name: /build your base resume/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /start from your resume/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /upload resume/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /enter manually/i })).toBeVisible();
+  });
+
+  test("advances to the basics step", async ({ page }) => {
+    await page.goto("/onboarding");
+    await page.getByRole("button", { name: /enter manually/i }).click();
+    await expect(page.getByRole("heading", { name: /your basics/i })).toBeVisible();
+    await expect(page.getByPlaceholder("Somesh Metri")).toBeVisible();
   });
 
   test("passes WCAG audit", async ({ page }) => {
     await page.goto("/onboarding");
+    await expect(page.getByRole("heading", { name: /start from your resume/i })).toBeVisible();
     await expectNoA11yViolations(page);
   });
 });

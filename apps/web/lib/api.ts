@@ -194,3 +194,88 @@ export const cancelSubscription = () =>
 
 /** Direct URL for the DOCX download (goes through the same-origin proxy). */
 export const downloadRunUrl = (id: string) => `${API_PREFIX}/runs/${id}/download`;
+
+// ===========================================================================
+// Profile / onboarding
+// ===========================================================================
+
+export interface EducationItem {
+  degree: string;
+  institution: string;
+  dates?: string | null;
+}
+
+export interface ExperienceItem {
+  title: string;
+  company: string;
+  location?: string | null;
+  dates?: string | null;
+  bullets: string[];
+}
+
+export interface ProjectItem {
+  title: string;
+  description?: string | null;
+  technologies: string[];
+  url?: string | null;
+}
+
+export interface SkillCategoryItem {
+  category: string;
+  items: string[];
+}
+
+export interface ProfileBasics {
+  full_name: string;
+  phone?: string | null;
+  email?: string | null;
+  location?: string | null;
+  linkedin_url?: string | null;
+  github_url?: string | null;
+}
+
+export interface Profile extends ProfileBasics {
+  id: string;
+  hook_line: string | null;
+  allow_ai_projects: boolean;
+  onboarding_step: number;
+  is_complete: boolean;
+  educations: (EducationItem & { id: string; sort_order: number })[];
+  experiences: (ExperienceItem & { id: string; sort_order: number })[];
+  projects: (ProjectItem & { id: string; sort_order: number })[];
+  skills: (SkillCategoryItem & { id: string; sort_order: number })[];
+}
+
+export interface ParsedResume {
+  full_name: string | null;
+  phone: string | null;
+  email: string | null;
+  educations: EducationItem[];
+  experiences: ExperienceItem[];
+  projects: ProjectItem[];
+  skills: SkillCategoryItem[];
+  raw_text: string | null;
+}
+
+export const getProfile = () => api<Profile>("/profile");
+export const updateBasics = (body: ProfileBasics) =>
+  api<Profile>("/profile/basics", { method: "PATCH", json: body });
+export const updateVoice = (body: { hook_line?: string | null; allow_ai_projects: boolean }) =>
+  api<Profile>("/profile/voice", { method: "PATCH", json: body });
+export const setEducations = (items: EducationItem[]) =>
+  api<Profile>("/profile/educations", { method: "PUT", json: items });
+export const setExperiences = (items: ExperienceItem[]) =>
+  api<Profile>("/profile/experiences", { method: "PUT", json: items });
+export const setProjects = (items: ProjectItem[]) =>
+  api<Profile>("/profile/projects", { method: "PUT", json: items });
+export const setSkills = (items: SkillCategoryItem[]) =>
+  api<Profile>("/profile/skills", { method: "PUT", json: items });
+export const advanceStep = (step: number) =>
+  api<Profile>("/profile/step", { method: "POST", json: { step } });
+
+/** Upload a PDF/DOCX resume for structured prefill. Multipart, no JSON body. */
+export function parseResume(file: File) {
+  const fd = new FormData();
+  fd.append("file", file);
+  return api<ParsedResume>("/profile/parse-resume", { method: "POST", body: fd });
+}
