@@ -2,11 +2,18 @@
 
 import { Reveal } from "@/components/motion/reveal";
 import { Button, ButtonLink } from "@/components/ui/button";
+import { ApiRequestError, submitTailor } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { ArrowRight, CheckCircle2, Sparkles } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 
 const MIN_JD = 50;
+
+interface SubmitError {
+  detail: string;
+  code: string;
+}
 
 export default function TailorPage() {
   const [jd, setJd] = useState("");
@@ -14,6 +21,7 @@ export default function TailorPage() {
   const [role, setRole] = useState("");
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [error, setError] = useState<SubmitError | null>(null);
 
   const remaining = MIN_JD - jd.trim().length;
   const canSubmit = remaining <= 0 && !loading;
@@ -22,11 +30,26 @@ export default function TailorPage() {
     e.preventDefault();
     if (!canSubmit) return;
     setLoading(true);
-    // TODO: POST /api/backend/tailor
-    await new Promise((r) => setTimeout(r, 1400));
-    setLoading(false);
-    setDone(true);
+    setError(null);
+    try {
+      await submitTailor({
+        jd_text: jd,
+        company: company.trim() || undefined,
+        role: role.trim() || undefined,
+      });
+      setDone(true);
+    } catch (err) {
+      if (err instanceof ApiRequestError) {
+        setError({ detail: err.problem.detail, code: err.problem.code });
+      } else {
+        setError({ detail: "Something went wrong. Try again.", code: "unknown" });
+      }
+    } finally {
+      setLoading(false);
+    }
   }
+
+  const needsOnboarding = error?.code.includes("onboarding");
 
   if (done) {
     return (
@@ -107,6 +130,24 @@ export default function TailorPage() {
             <Field id="company" label="Company" placeholder="Lexi" value={company} onChange={setCompany} />
             <Field id="role" label="Role" placeholder="AI Engineer" value={role} onChange={setRole} />
           </div>
+
+          {error && (
+            <div
+              role="alert"
+              className="rounded-md border border-danger/40 bg-danger-subtle px-4 py-3 text-sm text-danger"
+            >
+              {error.detail}
+              {needsOnboarding && (
+                <>
+                  {" "}
+                  <Link href="/onboarding" className="font-medium underline">
+                    Complete your profile
+                  </Link>
+                  .
+                </>
+              )}
+            </div>
+          )}
 
           <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border-subtle pt-6">
             <p className="font-mono text-2xs uppercase tracking-wide text-fg-quaternary">

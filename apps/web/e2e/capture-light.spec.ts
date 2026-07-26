@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { mockBackend } from "./helpers";
 
 /** Light-theme capture, to verify it is a real design and not an inversion. */
 const pages = [
@@ -9,6 +10,8 @@ const pages = [
 
 for (const { path, name } of pages) {
   test(`capture light ${name}`, async ({ page }, testInfo) => {
+    // Stand in the backend so auth-gated pages render their real content.
+    await mockBackend(page);
     await page.goto(path, { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("radio", { name: "System" })).toBeChecked();
     await page.getByRole("radio", { name: "Light" }).click();

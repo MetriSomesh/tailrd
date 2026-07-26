@@ -1,12 +1,14 @@
 "use client";
 
+import { useUser } from "@/components/app/require-auth";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
-import { ButtonLink } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
+import { logout as apiLogout } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { SITE } from "@/lib/site";
-import { FileText, LayoutDashboard, Menu, Sparkles, Wallet, X } from "lucide-react";
+import { FileText, LayoutDashboard, LogOut, Menu, Sparkles, Wallet, X } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const nav = [
@@ -18,11 +20,26 @@ const nav = [
 
 export function AppHeader() {
   const pathname = usePathname();
+  const router = useRouter();
+  const user = useUser();
   const [open, setOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    try {
+      await apiLogout();
+    } catch {
+      // Even if the call fails, clear the client and send them to login.
+    }
+    router.replace("/login");
+  }
+
+  const initial = (user.name || user.email).trim().charAt(0).toUpperCase();
 
   return (
     <header className="sticky top-0 z-50 border-b border-border-strong bg-surface-base/85 backdrop-blur-xl">
@@ -61,6 +78,28 @@ export function AppHeader() {
             New resume
           </ButtonLink>
           <ThemeToggle />
+
+          {/* User + logout (desktop) */}
+          <div className="hidden items-center gap-2 border-l border-border-subtle pl-2 md:flex">
+            <span
+              aria-hidden="true"
+              className="grid size-7 place-items-center rounded-full bg-accent text-2xs font-semibold text-accent-contrast"
+              title={user.email}
+            >
+              {initial}
+            </span>
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={loggingOut}
+              aria-label="Log out"
+              title="Log out"
+              className="grid size-9 place-items-center rounded-md border border-border-default text-fg-tertiary transition-colors hover:bg-surface-raised hover:text-fg disabled:opacity-50"
+            >
+              <LogOut className="size-4" />
+            </button>
+          </div>
+
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
@@ -100,6 +139,23 @@ export function AppHeader() {
             );
           })}
         </nav>
+
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <span
+              aria-hidden="true"
+              className="grid size-8 shrink-0 place-items-center rounded-full bg-accent text-xs font-semibold text-accent-contrast"
+            >
+              {initial}
+            </span>
+            <span className="truncate text-xs text-fg-tertiary">{user.email}</span>
+          </div>
+          <Button variant="secondary" size="sm" onClick={handleLogout} loading={loggingOut}>
+            <LogOut className="size-3.5" />
+            Log out
+          </Button>
+        </div>
+
         <ButtonLink href="/tailor" className="mt-4 w-full">
           <Sparkles className="size-4" />
           New resume

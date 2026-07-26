@@ -1,4 +1,5 @@
 import { AppHeader } from "@/components/app/app-header";
+import { RequireAuth } from "@/components/app/require-auth";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -8,11 +9,13 @@ export const metadata: Metadata = {
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-dvh flex-col">
-      <AppHeader />
-      <main id="main" className="container-page flex-1 py-8 lg:py-10">
-        {children}
-      </main>
-    </div>
+    <RequireAuth>
+      <div className="flex min-h-dvh flex-col">
+        <AppHeader />
+        <main id="main" className="container-page flex-1 py-8 lg:py-10">
+          {children}
+        </main>
+      </div>
+    </RequireAuth>
   );
 }

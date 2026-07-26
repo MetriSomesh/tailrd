@@ -1,5 +1,131 @@
 import AxeBuilder from "@axe-core/playwright";
-import { type Page, expect } from "@playwright/test";
+import { type Page, type Route, expect } from "@playwright/test";
+
+/**
+ * Intercepts the same-origin API proxy (`/api/backend/*`) so app-page tests can
+ * render against fixtures without a live backend. Every app route is auth-gated
+ * (GET /auth/me) and data-driven (usage, runs), so this stands those in.
+ */
+export interface MockBackendData {
+  me?: Record<string, unknown> | null; // null → simulate 401 (signed out)
+  usage?: Record<string, unknown>;
+  runs?: Record<string, unknown>[];
+  runDetails?: Record<string, Record<string, unknown>>;
+}
+
+const DEFAULT_ME = {
+  id: "u_test",
+  email: "test@tailrd.app",
+  name: "Test User",
+  avatar_url: null,
+  auth_provider: "password",
+  email_verified: true,
+  created_at: "2026-01-01T00:00:00Z",
+};
+
+const DEFAULT_USAGE = {
+  has_subscription: false,
+  subscription_plan: null,
+  subscription_ends: null,
+  credit_balance: 0,
+  free_used: 1,
+  free_limit: 3,
+  free_remaining: 2,
+  period: "2026-07",
+};
+
+const DEFAULT_RUNS = [
+  {
+    id: "r1",
+    status: "succeeded",
+    jd_label: "AI Engineer at Lexi",
+    company: "Lexi",
+    role: "AI Engineer",
+    overall_score: 84.5,
+    created_at: "2026-07-25T10:00:00Z",
+    finished_at: "2026-07-25T10:01:00Z",
+  },
+  {
+    id: "r2",
+    status: "running",
+    jd_label: "Backend Engineer at Stripe",
+    company: "Stripe",
+    role: "Backend Engineer",
+    overall_score: null,
+    created_at: "2026-07-25T09:00:00Z",
+    finished_at: null,
+  },
+  {
+    id: "r3",
+    status: "succeeded",
+    jd_label: "Full Stack at Vercel",
+    company: "Vercel",
+    role: "Full Stack",
+    overall_score: 71.2,
+    created_at: "2026-07-24T09:00:00Z",
+    finished_at: "2026-07-24T09:01:00Z",
+  },
+];
+
+const DEFAULT_DETAILS: Record<string, Record<string, unknown>> = {
+  r1: {
+    ...DEFAULT_RUNS[0],
+    jd_text: "…",
+    tailored_json: null,
+    parsability_json: null,
+    iterations: 1,
+    error_code: null,
+    error_message: null,
+    docx_storage_key: "runs/r1/resume.docx",
+    score_json: {
+      overall_score: 84.5,
+      keyword_match_pct: 56,
+      skills_match_pct: 100,
+      term_overlap_pct: 100,
+      experience_relevance_pct: 100,
+      matched_keywords: [],
+      missing_keywords: [],
+      skills_matched: ["LLM agents", "Retrieval", "Backend APIs", "Evals"],
+      skills_missing: ["Kubernetes"],
+      responsibilities_covered: [],
+      responsibilities_uncovered: [],
+    },
+  },
+};
+
+export async function mockBackend(page: Page, data: MockBackendData = {}): Promise<void> {
+  const me = data.me === undefined ? DEFAULT_ME : data.me;
+  const usage = data.usage ?? DEFAULT_USAGE;
+  const runs = data.runs ?? DEFAULT_RUNS;
+  const details = data.runDetails ?? DEFAULT_DETAILS;
+
+  await page.route("**/api/backend/**", async (route: Route) => {
+    const path = new URL(route.request().url()).pathname.replace("/api/backend", "");
+
+    if (path === "/auth/me") {
+      if (me === null) {
+        return route.fulfill({
+          status: 401,
+          json: { code: "not_authenticated", title: "Unauthorized", detail: "Not authenticated.", status: 401 },
+        });
+      }
+      return route.fulfill({ json: me });
+    }
+    if (path === "/billing/usage") return route.fulfill({ json: usage });
+    if (path === "/runs") return route.fulfill({ json: runs });
+
+    const runMatch = path.match(/^\/runs\/([^/]+)$/);
+    if (runMatch) {
+      const detail = details[runMatch[1]] ?? runs.find((r) => r.id === runMatch[1]) ?? {};
+      return route.fulfill({ json: detail });
+    }
+
+    return route.fulfill({
+      status: 404,
+      json: { code: "not_found", title: "Not found", detail: "Not found.", status: 404 },
+    });
+  });
+}
 
 /**
  * Waits until the page is visually settled before auditing.

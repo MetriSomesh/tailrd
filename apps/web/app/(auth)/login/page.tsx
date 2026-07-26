@@ -21,7 +21,9 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await api("/auth/login", { json: { email, password } });
-      router.push("/dashboard");
+      // Honour a ?next= redirect target, but only same-origin paths.
+      const next = new URLSearchParams(window.location.search).get("next");
+      router.push(next && next.startsWith("/") ? next : "/dashboard");
     } catch (err) {
       setError(
         err instanceof ApiRequestError
