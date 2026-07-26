@@ -266,6 +266,134 @@ class OpenCodeAgentBackend(AgentBackend):
 
 
 # ---------------------------------------------------------------------------
+# OpenAI-compatible backend (the local OpenCode/Zen proxy, or Zen cloud)
+# ---------------------------------------------------------------------------
+
+# Chat-format variant of the tailoring instructions. Same rules as the CLI
+# prompt, but the model returns the JSON directly in its message rather than
+# writing a file.
+_TAILOR_SYSTEM_PROMPT = """\
+You are an ATS resume-tailoring engine. Given a candidate's base resume and a \
+target job description, rewrite the editable sections to match the job.
+
+Respond with ONLY a JSON object — no markdown, no code fences, no commentary. \
+The object MUST have exactly two top-level keys: "immutable" and "editable".
+
+IMMUTABLE — copy through unchanged from the input base resume:
+- immutable.name, immutable.contact, immutable.education
+- for each experience: its title, company, location and dates
+
+EDITABLE — rewrite to match the job description:
+- editable.about: 2-3 punchy sentences. Start with the candidate's existing hook \
+line if present, then weave in the skills and terms the JD emphasises. No generic \
+filler.
+- editable.skills: an object mapping category names to arrays (e.g. \
+{"Languages": ["Python"]}), ordered by JD relevance. Only skills the candidate \
+plausibly has.
+- editable.experience: keep only the 2 most relevant roles. Each bullet carries a \
+concrete, defensible impact (scope, numbers or outcome). Never invent precise \
+metrics you could not justify in an interview.
+- editable.projects: 3-4 entries; each description is 2-3 achievement lines \
+separated by newlines, naming the tech used and the impact. If ALLOW_AI_PROJECTS \
+is false, do not invent new projects — only rewrite existing ones.
+"""
+
+
+def _extract_json_object(text: str) -> dict:
+    """Parse a JSON object from a model response, tolerating code fences/prose."""
+    import re
+
+    cleaned = text.strip()
+    # Strip ```json ... ``` fences if present.
+    fence = re.search(r"```(?:json)?\s*(.*?)```", cleaned, re.DOTALL)
+    if fence:
+        cleaned = fence.group(1).strip()
+    # Fall back to the outermost { ... } span.
+    if not cleaned.startswith("{"):
+        start, end = cleaned.find("{"), cleaned.rfind("}")
+        if start != -1 and end > start:
+            cleaned = cleaned[start : end + 1]
+    return json.loads(cleaned)
+
+
+class OpenAICompatibleAgentBackend(AgentBackend):
+    """Calls an OpenAI-compatible chat-completions endpoint.
+
+    This mirrors how Hermes consumes OpenCode: it points at a base URL (the
+    local OpenCode/Zen proxy at 127.0.0.1:9876, Zen cloud, or any compatible
+    server) and speaks the OpenAI wire format. No subprocess, no workspace —
+    the model returns the tailored resume JSON, which we parse.
+    """
+
+    def __init__(self) -> None:
+        self._base_url = settings.AGENT_API_BASE_URL.rstrip("/")
+        # Local proxies typically accept any bearer; fall back to a dummy so
+        # SDKs/servers that require an Authorization header still work.
+        self._api_key = settings.AGENT_API_KEY or settings.OPENCODE_API_KEY or "sk-local"
+        self._model = settings.AGENT_MODEL or "deepseek-v4-flash-free"
+        self._timeout = settings.AGENT_TIMEOUT_SECONDS
+
+    async def run(
+        self,
+        base_resume: dict,
+        jd_text: str,
+        allow_ai_projects: bool = False,
+    ) -> AgentResult:
+        import httpx
+
+        user_message = (
+            f"ALLOW_AI_PROJECTS={'true' if allow_ai_projects else 'false'}\n\n"
+            f"=== BASE RESUME (JSON) ===\n{json.dumps(base_resume, ensure_ascii=False)}\n\n"
+            f"=== JOB DESCRIPTION ===\n{jd_text}\n\n"
+            "Return the tailored resume as a single JSON object now."
+        )
+        payload = {
+            "model": self._model,
+            "messages": [
+                {"role": "system", "content": _TAILOR_SYSTEM_PROMPT},
+                {"role": "user", "content": user_message},
+            ],
+            "temperature": 0.4,
+            "stream": False,
+        }
+        headers = {"Authorization": f"Bearer {self._api_key}"}
+
+        try:
+            async with httpx.AsyncClient(timeout=self._timeout) as client:
+                resp = await client.post(
+                    f"{self._base_url}/chat/completions", json=payload, headers=headers
+                )
+        except (httpx.TimeoutException, TimeoutError, asyncio.TimeoutError) as exc:
+            raise AgentTimeoutError(f"Resume engine timed out after {self._timeout}s.") from exc
+        except httpx.HTTPError as exc:
+            log.error("agent_openai_transport_error", error=type(exc).__name__)
+            raise AgentUnavailableError(f"Resume engine unreachable: {type(exc).__name__}") from exc
+
+        if resp.status_code != 200:
+            log.error("agent_openai_http_error", status=resp.status_code, body=resp.text[:300])
+            raise AgentUnavailableError(f"Resume engine returned HTTP {resp.status_code}.")
+
+        try:
+            data = resp.json()
+            content = data["choices"][0]["message"]["content"]
+        except (ValueError, KeyError, IndexError, TypeError) as exc:
+            log.error("agent_openai_bad_envelope", error=str(exc)[:200])
+            raise AgentOutputInvalidError("Resume engine returned an unexpected response shape.") from exc
+
+        try:
+            tailored = _extract_json_object(content)
+        except (json.JSONDecodeError, ValueError) as exc:
+            log.error("agent_openai_parse_error", error=str(exc)[:200])
+            raise AgentOutputInvalidError("Resume engine did not return valid JSON.") from exc
+
+        if not isinstance(tailored, dict) or "immutable" not in tailored or "editable" not in tailored:
+            raise AgentOutputInvalidError("Resume engine output is missing required keys.")
+
+        log.info("agent_openai_success", model=self._model)
+        return AgentResult(tailored_json=tailored, iterations=1)
+
+
+# ---------------------------------------------------------------------------
 # Public API: acquire lock → check breaker → run → release lock
 # ---------------------------------------------------------------------------
 
@@ -274,6 +402,8 @@ def get_agent_backend() -> AgentBackend:
     """Factory: returns the configured agent backend."""
     if settings.AGENT_BACKEND == "opencode":
         return OpenCodeAgentBackend()
+    if settings.AGENT_BACKEND == "openai":
+        return OpenAICompatibleAgentBackend()
     return MockAgentBackend()
 
 
@@ -319,8 +449,27 @@ async def check_agent() -> tuple[bool, str]:
 
     Returns (ok, detail). Safe to call from a health endpoint.
     """
-    if settings.AGENT_BACKEND != "opencode":
+    if settings.AGENT_BACKEND == "mock":
         return True, "mock"
+
+    if settings.AGENT_BACKEND == "openai":
+        # Confirm the OpenAI-compatible endpoint is reachable (GET /models is the
+        # standard cheap probe). Does not spend tokens.
+        import httpx
+
+        base = settings.AGENT_API_BASE_URL.rstrip("/")
+        key = settings.AGENT_API_KEY or settings.OPENCODE_API_KEY or "sk-local"
+        try:
+            async with httpx.AsyncClient(timeout=8) as client:
+                resp = await client.get(
+                    f"{base}/models", headers={"Authorization": f"Bearer {key}"}
+                )
+        except httpx.HTTPError as exc:
+            return False, f"{base} unreachable ({type(exc).__name__})"
+        if resp.status_code >= 500:
+            return False, f"{base} returned {resp.status_code}"
+        # 200/401/404 all prove the endpoint is up (some proxies don't expose /models).
+        return True, f"openai endpoint up ({base}, model={settings.AGENT_MODEL or 'default'})"
 
     try:
         process = await asyncio.create_subprocess_exec(

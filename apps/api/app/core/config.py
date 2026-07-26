@@ -92,21 +92,34 @@ class Settings(BaseSettings):
 
     # ---- Agent (Hermes + OpenCode) ----
     AGENT_ENABLED: bool = True
-    # mock = deterministic stub (tests/dev). opencode = real subprocess.
-    AGENT_BACKEND: Literal["mock", "opencode"] = "mock"
+    # mock     = deterministic stub (tests/dev). No LLM.
+    # opencode = spawn the `opencode` CLI per job (subprocess + workspace).
+    # openai   = call an OpenAI-compatible endpoint (e.g. the local OpenCode/Zen
+    #            proxy that Hermes uses, or Zen cloud). This is the recommended
+    #            production path — no per-job subprocess.
+    AGENT_BACKEND: Literal["mock", "opencode", "openai"] = "mock"
     AGENT_COMMAND: str = "opencode"
     AGENT_WORKSPACE_ROOT: str = "./_agent_workspaces"
     AGENT_SKILL_DIR: str = "../../agent/skills"
     AGENT_TIMEOUT_SECONDS: int = 180
-    # Model for the OpenCode agent, in `provider/model` form (e.g. an OpenCode
-    # Zen model like "opencode/claude-sonnet-4"). None → OpenCode's configured
-    # default model is used. Run `opencode models` to list valid ids.
+    # Model id. For opencode: `provider/model` (run `opencode models`). For the
+    # openai backend: whatever the endpoint expects (e.g. "deepseek-v4-flash-free"
+    # via the local proxy, or an OpenCode Zen model). None → backend default.
     AGENT_MODEL: str | None = None
-    # Auto-approve tool permissions so the agent can write files unattended.
+    # Auto-approve tool permissions so the opencode CLI can write files unattended.
     AGENT_AUTO_APPROVE: bool = True
-    # OpenCode Zen API key. Injected into the agent subprocess environment as
-    # OPENCODE_API_KEY. Can also be configured via `opencode auth login`.
+    # OpenCode Zen API key. For opencode: injected as OPENCODE_API_KEY env (also
+    # settable via `opencode auth login`).
     OPENCODE_API_KEY: str | None = None
+
+    # ---- OpenAI-compatible agent backend (AGENT_BACKEND=openai) ----
+    # Base URL of the OpenAI-compatible endpoint. Defaults to the local OpenCode
+    # proxy that Hermes points at; can be Zen cloud (https://opencode.ai/zen/v1)
+    # or any OpenAI-compatible server (Ollama, LM Studio, OpenRouter, ...).
+    AGENT_API_BASE_URL: str = "http://127.0.0.1:9876/v1"
+    # API key for that endpoint. Local proxies usually accept any/no key; a dummy
+    # is sent when unset so SDKs that require a bearer token still work.
+    AGENT_API_KEY: str | None = None
     AGENT_LOCK_KEY: str = "tailrd:agent:lock"
     AGENT_LOCK_TTL_SECONDS: int = 200
     AGENT_MAX_RETRIES: int = 2
