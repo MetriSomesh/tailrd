@@ -86,8 +86,9 @@ class TestOpenCodeBackend:
         await OpenCodeAgentBackend().run(BASE_RESUME, "JD")
 
         argv = captured["args"]
-        assert argv[0] == settings.AGENT_COMMAND
-        assert argv[1] == "run"
+        # argv[0] is the resolved executable (or a cmd.exe/powershell wrapper on
+        # Windows), so assert on the opencode arguments rather than the prefix.
+        assert "run" in argv
         assert "--dir" in argv
         assert "--model" in argv and "opencode/some-model" in argv
         assert "--auto" in argv

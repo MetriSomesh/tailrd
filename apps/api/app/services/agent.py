@@ -19,9 +19,28 @@ import asyncio
 import json
 import os
 import shutil
+import sys
 import uuid
 from abc import ABC, abstractmethod
 from pathlib import Path
+
+
+def _resolve_cli(command: str) -> list[str]:
+    """Return the argv prefix to invoke a CLI cross-platform.
+
+    npm installs Windows shims as .cmd/.ps1, which CreateProcess (used by
+    asyncio.create_subprocess_exec) cannot execute directly — so on Windows we
+    route .cmd/.bat through cmd.exe and .ps1 through PowerShell. On POSIX the
+    resolved path (or the bare command) runs directly.
+    """
+    exe = shutil.which(command) or command
+    if sys.platform == "win32":
+        low = exe.lower()
+        if low.endswith((".cmd", ".bat")):
+            return ["cmd.exe", "/c", exe]
+        if low.endswith(".ps1"):
+            return ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", exe]
+    return [exe]
 
 from app.core.config import settings
 from app.core.errors import (
@@ -142,6 +161,16 @@ If the environment variable ALLOW_AI_PROJECTS is "false", do NOT invent new \
 projects — only rewrite the candidate's existing ones.
 """
 
+# Short, shell-safe prompt passed as the CLI arg. The detailed rules go into
+# instructions.md in the workspace: passing a long multi-line prompt as a
+# command-line argument is mangled by cmd.exe on Windows and is brittle in
+# general. A single clean line avoids that entirely.
+_SHORT_PROMPT = (
+    "Follow the steps in instructions.md in the current directory: read "
+    "base_resume.json and temp_jd.txt, then write the tailored resume to "
+    "tailored.json. Output only that file. Do not ask questions."
+)
+
 
 class OpenCodeAgentBackend(AgentBackend):
     """Spawns OpenCode in non-interactive mode in an ephemeral workspace.
@@ -160,7 +189,9 @@ class OpenCodeAgentBackend(AgentBackend):
     """
 
     def __init__(self) -> None:
-        self._workspace_root = Path(settings.AGENT_WORKSPACE_ROOT)
+        # Absolute path: opencode's --dir must be absolute (it chdir's into it,
+        # and a relative path resolves against the wrong base under the shell).
+        self._workspace_root = Path(settings.AGENT_WORKSPACE_ROOT).resolve()
         self._workspace_root.mkdir(parents=True, exist_ok=True)
         self._timeout = settings.AGENT_TIMEOUT_SECONDS
         self._command = settings.AGENT_COMMAND
@@ -170,12 +201,12 @@ class OpenCodeAgentBackend(AgentBackend):
 
     def _build_command(self, workspace: Path) -> list[str]:
         # Flags first, prompt (variadic positional) last.
-        cmd = [self._command, "run", "--dir", str(workspace)]
+        cmd = [*_resolve_cli(self._command), "run", "--dir", str(workspace)]
         if self._model:
             cmd += ["--model", self._model]
         if self._auto:
             cmd.append("--auto")
-        cmd.append(_TAILOR_PROMPT)
+        cmd.append(_SHORT_PROMPT)
         return cmd
 
     def _build_env(self, allow_ai_projects: bool) -> dict[str, str]:
@@ -218,6 +249,7 @@ class OpenCodeAgentBackend(AgentBackend):
                 json.dumps(base_resume, indent=2), encoding="utf-8"
             )
             (workspace / "temp_jd.txt").write_text(jd_text, encoding="utf-8")
+            (workspace / "instructions.md").write_text(_TAILOR_PROMPT, encoding="utf-8")
 
             cmd = self._build_command(workspace)
             log.info("agent_spawn", run_id=run_id, model=self._model or "default")
@@ -473,7 +505,7 @@ async def check_agent() -> tuple[bool, str]:
 
     try:
         process = await asyncio.create_subprocess_exec(
-            settings.AGENT_COMMAND,
+            *_resolve_cli(settings.AGENT_COMMAND),
             "--version",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
