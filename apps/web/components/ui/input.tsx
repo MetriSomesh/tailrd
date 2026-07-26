@@ -23,7 +23,10 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(
 
     return (
       <div className="space-y-1.5">
-        <label htmlFor={inputId} className="block text-sm font-medium text-fg">
+        <label
+          htmlFor={inputId}
+          className="block font-mono text-2xs font-medium uppercase tracking-wide text-fg-secondary"
+        >
           {label}
         </label>
         <input
@@ -32,12 +35,12 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy}
           className={cn(
-            "w-full rounded-xl border bg-surface-sunken px-3.5 py-2.5 text-sm text-fg",
+            "w-full rounded-md border bg-surface-sunken px-3.5 py-2.5 text-sm text-fg",
             "transition-colors placeholder:text-fg-tertiary",
-            "focus:outline-none focus:ring-4",
+            "focus:outline-none focus:ring-2 focus:ring-offset-0",
             error
-              ? "border-danger focus:border-danger focus:ring-danger/12"
-              : "border-border-default focus:border-accent focus:ring-accent/12",
+              ? "border-danger focus:border-danger focus:ring-danger/30"
+              : "border-border-default focus:border-fg-primary focus:ring-fg-primary/15",
             className,
           )}
           {...props}

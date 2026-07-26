@@ -11,9 +11,9 @@ const runs = [
 ];
 
 function scoreTone(score: number) {
-  if (score >= 80) return "bg-success-subtle text-success";
-  if (score >= 60) return "bg-accent-subtle text-accent";
-  return "bg-warning-subtle text-warning";
+  if (score >= 80) return "border-success/30 bg-success-subtle text-success";
+  if (score >= 60) return "border-accent/40 bg-accent-subtle text-accent-text";
+  return "border-warning/30 bg-warning-subtle text-warning";
 }
 
 export default function RunsPage() {
@@ -21,9 +21,13 @@ export default function RunsPage() {
     <div className="space-y-8">
       <Reveal className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="type-display text-3xl text-fg sm:text-4xl">Runs</h1>
-          <p className="mt-1.5 text-sm text-fg-tertiary">
-            Every resume you have tailored, with its score.
+          <p className="eyebrow flex items-center gap-2">
+            <span className="inline-block h-px w-6 bg-accent" />
+            History
+          </p>
+          <h1 className="type-display mt-3 text-3xl text-fg sm:text-4xl">Runs</h1>
+          <p className="mt-2 font-mono text-2xs uppercase tracking-wide text-fg-quaternary">
+            Every resume you have tailored, with its score
           </p>
         </div>
         <ButtonLink href="/tailor" variant="secondary">
@@ -33,55 +37,66 @@ export default function RunsPage() {
       </Reveal>
 
       <Reveal delay={80}>
-        {/* Single bordered table-like list. Reads cleanly and stays aligned. */}
-        <ul className="divide-y divide-border-subtle overflow-hidden rounded-2xl bg-surface-raised ring-1 ring-border-subtle">
-          {runs.map((run) => (
-            <li
-              key={run.id}
-              className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 transition-colors duration-fast hover:bg-surface-overlay/50"
-            >
-              <Status status={run.status} />
+        {/* Framed table-like list with a mono column header */}
+        <div className="overflow-hidden rounded-md border border-border-strong bg-surface-raised">
+          <div className="hidden items-center gap-x-4 border-b border-border-subtle bg-surface-sunken px-5 py-2.5 sm:flex">
+            <span className="w-2.5" />
+            <span className="mono-label flex-1">Company / Role</span>
+            <span className="mono-label w-24">Date</span>
+            <span className="mono-label w-14 text-right">Score</span>
+            <span className="w-8" />
+          </div>
 
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-fg">{run.company}</p>
-                <p className="truncate text-xs text-fg-quaternary">{run.role}</p>
-              </div>
-
-              <span className="shrink-0 font-mono text-2xs text-fg-quaternary">{run.date}</span>
-
-              {run.score !== null ? (
-                <span
-                  className={cn(
-                    "shrink-0 rounded-full px-2.5 py-1 font-mono text-2xs font-medium tabular-nums",
-                    scoreTone(run.score),
-                  )}
-                >
-                  {run.score}%
-                </span>
-              ) : (
-                <span className="shrink-0 rounded-full bg-surface-overlay px-2.5 py-1 text-2xs font-medium text-fg-tertiary">
-                  {run.status}
-                </span>
-              )}
-
-              <button
-                type="button"
-                disabled={run.status !== "succeeded"}
-                aria-label={`Download resume for ${run.company}`}
-                className="grid size-8 shrink-0 place-items-center rounded-lg text-fg-tertiary transition-colors hover:bg-surface-overlay hover:text-fg disabled:pointer-events-none disabled:opacity-30"
+          <ul className="divide-y divide-border-subtle">
+            {runs.map((run) => (
+              <li
+                key={run.id}
+                className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 transition-colors duration-fast hover:bg-surface-sunken"
               >
-                <Download className="size-4" />
-              </button>
-            </li>
-          ))}
-        </ul>
+                <Status status={run.status} />
+
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-fg">{run.company}</p>
+                  <p className="truncate text-xs text-fg-quaternary">{run.role}</p>
+                </div>
+
+                <span className="w-24 shrink-0 font-mono text-2xs text-fg-quaternary">{run.date}</span>
+
+                <span className="flex w-14 shrink-0 justify-end">
+                  {run.score !== null ? (
+                    <span
+                      className={cn(
+                        "rounded-[2px] border px-2 py-0.5 font-mono text-2xs font-medium tabular-nums",
+                        scoreTone(run.score),
+                      )}
+                    >
+                      {run.score}
+                    </span>
+                  ) : (
+                    <span className="rounded-[2px] border border-border-subtle px-2 py-0.5 font-mono text-2xs uppercase text-fg-tertiary">
+                      {run.status === "running" ? "···" : "—"}
+                    </span>
+                  )}
+                </span>
+
+                <button
+                  type="button"
+                  disabled={run.status !== "succeeded"}
+                  aria-label={`Download resume for ${run.company}`}
+                  className="grid size-8 shrink-0 place-items-center rounded-md border border-border-default text-fg-tertiary transition-colors hover:border-border-strong hover:text-fg disabled:pointer-events-none disabled:opacity-30"
+                >
+                  <Download className="size-4" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       </Reveal>
     </div>
   );
 }
 
 function Status({ status }: { status: string }) {
-  // role="img" is required for aria-label to be valid on a generic element.
   const running = status === "running" || status === "queued";
   if (running) {
     return (

@@ -28,7 +28,7 @@ export default function ForgotPasswordPage() {
   if (sent) {
     return (
       <div className="text-center">
-        <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-success-subtle ring-1 ring-inset ring-success/20">
+        <div className="mx-auto grid size-12 place-items-center rounded-md border border-success/40 bg-success-subtle">
           <CheckCircle2 className="size-5 text-success" />
         </div>
         <h1 className="type-display mt-5 text-2xl text-fg">Check your inbox</h1>
@@ -37,7 +37,7 @@ export default function ForgotPasswordPage() {
         </p>
         <Link
           href="/login"
-          className="mt-6 inline-block text-sm font-medium text-accent hover:underline"
+          className="mt-6 inline-block text-sm font-medium text-accent-text hover:underline"
         >
           Back to sign in
         </Link>
@@ -69,7 +69,7 @@ export default function ForgotPasswordPage() {
 
       <p className="mt-6 text-center text-sm text-fg-tertiary">
         Remembered it?{" "}
-        <Link href="/login" className="font-medium text-accent hover:underline">
+        <Link href="/login" className="font-medium text-accent-text hover:underline">
           Sign in
         </Link>
       </p>

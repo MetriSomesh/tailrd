@@ -1,4 +1,4 @@
-import { test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 /** Light-theme capture, to verify it is a real design and not an inversion. */
 const pages = [
@@ -10,6 +10,7 @@ const pages = [
 for (const { path, name } of pages) {
   test(`capture light ${name}`, async ({ page }, testInfo) => {
     await page.goto(path, { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("radio", { name: "System" })).toBeChecked();
     await page.getByRole("radio", { name: "Light" }).click();
     await page.evaluate(() => document.fonts.ready);
     await page.waitForTimeout(700);

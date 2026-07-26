@@ -27,51 +27,68 @@ export function PlanCard({
   return (
     <div
       className={cn(
-        "hairline-top relative flex flex-col rounded-2xl p-6",
-        featured
-          ? "bg-surface-raised ring-2 ring-accent shadow-xl"
-          : "bg-surface-raised/60 ring-1 ring-border-subtle",
+        "relative flex w-full flex-col rounded-md border bg-surface-raised",
+        featured ? "border-border-strong hard-shadow" : "border-border-default",
       )}
     >
-      {featured && (
-        <span className="absolute -top-3 left-6 rounded-full bg-accent px-2.5 py-0.5 text-2xs font-semibold uppercase tracking-widest text-accent-contrast">
-          Most picked
+      {/* Header band */}
+      <div
+        className={cn(
+          "flex items-center justify-between border-b px-5 py-3",
+          featured ? "border-border-strong bg-accent" : "border-border-subtle",
+        )}
+      >
+        <span
+          className={cn(
+            "font-mono text-2xs uppercase tracking-widest",
+            featured ? "text-accent-contrast" : "text-fg-tertiary",
+          )}
+        >
+          {name}
         </span>
-      )}
-
-      <h3 className="text-sm font-medium text-fg">{name}</h3>
-
-      <div className="mt-4 flex items-baseline gap-1.5">
-        <span className="font-mono text-3xl font-semibold tabular-nums text-fg">
-          {pricePaise === 0 ? "Free" : formatPaise(pricePaise)}
-        </span>
-        {cadence && (
-          <span className="text-xs text-fg-quaternary">
-            {cadence === "one-time" ? "once" : `/ ${cadence}`}
+        {featured && (
+          <span className="font-mono text-2xs font-semibold uppercase tracking-wide text-accent-contrast">
+            ★ Most picked
           </span>
         )}
       </div>
 
-      {note && <p className="mt-1.5 text-2xs text-fg-quaternary">{note}</p>}
+      <div className="flex flex-1 flex-col p-5">
+        <div className="flex items-baseline gap-1.5">
+          <span className="type-display text-4xl tabular-nums text-fg">
+            {pricePaise === 0 ? "Free" : formatPaise(pricePaise)}
+          </span>
+          {cadence && (
+            <span className="font-mono text-2xs text-fg-quaternary">
+              {cadence === "one-time" ? "once" : `/ ${cadence}`}
+            </span>
+          )}
+        </div>
 
-      <ul className="mt-6 flex-1 space-y-2.5">
-        {features.map((f) => (
-          <li key={f} className="flex items-start gap-2.5 text-sm text-fg-secondary">
-            <Check
-              className={cn("mt-0.5 size-3.5 shrink-0", featured ? "text-accent" : "text-success")}
-            />
-            <span className="leading-snug">{f}</span>
-          </li>
-        ))}
-      </ul>
+        {note && <p className="mt-2 font-mono text-2xs text-fg-quaternary">{note}</p>}
 
-      <ButtonLink
-        href={href}
-        variant={featured ? "primary" : "secondary"}
-        className="mt-7 w-full"
-      >
-        {cta}
-      </ButtonLink>
+        <ul className="mt-6 flex-1 space-y-0 divide-y divide-border-subtle border-y border-border-subtle">
+          {features.map((f) => (
+            <li key={f} className="flex items-start gap-2.5 py-2.5 text-sm text-fg-secondary">
+              <Check
+                className={cn(
+                  "mt-0.5 size-3.5 shrink-0",
+                  featured ? "text-accent-text" : "text-fg-tertiary",
+                )}
+              />
+              <span className="leading-snug">{f}</span>
+            </li>
+          ))}
+        </ul>
+
+        <ButtonLink
+          href={href}
+          variant={featured ? "primary" : "secondary"}
+          className="mt-6 w-full"
+        >
+          {cta}
+        </ButtonLink>
+      </div>
     </div>
   );
 }

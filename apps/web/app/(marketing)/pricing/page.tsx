@@ -73,22 +73,25 @@ export default function PricingPage() {
     <>
       <PricingFaqJsonLd />
 
-      <section className="relative overflow-hidden">
-        <div aria-hidden="true" className="bg-dots absolute inset-0 -z-10" />
+      <section className="relative overflow-hidden border-b border-border-strong">
+        <div aria-hidden="true" className="bg-ruled absolute inset-0 -z-10 opacity-70" />
 
         <div className="container-page py-20 lg:py-24">
-          <Reveal className="mx-auto max-w-2xl text-center">
-            <p className="eyebrow">Pricing</p>
-            <h1 className="type-display mt-3 text-fluid-h2 text-balance text-fg">
+          <Reveal className="max-w-2xl">
+            <p className="eyebrow flex items-center gap-2">
+              <span className="inline-block h-px w-6 bg-accent" />
+              Pricing
+            </p>
+            <h1 className="type-display mt-5 text-fluid-h2 text-balance text-fg">
               Free to start. Cheap to continue.
             </h1>
-            <p className="mx-auto mt-5 max-w-lg text-pretty text-fg-secondary">
+            <p className="mt-5 max-w-lg text-pretty text-fg-secondary">
               Three resumes a month cost nothing. Beyond that, pay per resume or go unlimited
               for as long as your search lasts.
             </p>
           </Reveal>
 
-          <div className="mt-16 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {plans.map((plan, i) => (
               <Reveal key={plan.name} delay={i * 70} className="flex">
                 <PlanCard {...plan} />
@@ -99,7 +102,7 @@ export default function PricingPage() {
       </section>
 
       {/* FAQ */}
-      <section className="border-t border-border-subtle">
+      <section>
         <div className="container-page py-20 lg:py-24">
           <Reveal>
             <p className="eyebrow">Questions</p>

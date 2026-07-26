@@ -17,9 +17,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <div className="grid min-h-dvh lg:grid-cols-2">
       {/* Form side */}
       <div className="flex flex-col">
-        <header className="container-page flex h-16 items-center justify-between">
-          <Link href="/" className="text-base font-semibold tracking-tight text-fg">
-            {SITE.name}
+        <header className="container-page flex h-16 items-center justify-between border-b border-border-subtle">
+          <Link href="/" className="flex items-center gap-2.5">
+            <span aria-hidden="true" className="size-3 rounded-[2px] bg-accent" />
+            <span className="type-display text-lg tracking-tight text-fg">{SITE.name}</span>
           </Link>
           <ThemeToggle />
         </header>
@@ -30,15 +31,14 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       </div>
 
       {/* Proof side — hidden on small screens */}
-      <aside className="relative hidden overflow-hidden border-l border-border-subtle bg-surface-sunken/50 lg:block">
-        <div aria-hidden="true" className="bg-grid absolute inset-0" />
-        <div
-          aria-hidden="true"
-          className="glow-accent size-[32rem] -right-40 top-1/3"
-        />
+      <aside className="relative hidden overflow-hidden border-l border-border-strong bg-surface-sunken lg:block">
+        <div aria-hidden="true" className="bg-ruled absolute inset-0 opacity-70" />
         <div className="relative flex h-full flex-col justify-center px-12 xl:px-20">
-          <p className="eyebrow">What you get</p>
-          <h2 className="type-display mt-3 text-3xl text-balance text-fg">
+          <p className="eyebrow flex items-center gap-2">
+            <span className="inline-block h-px w-6 bg-accent" />
+            What you get
+          </p>
+          <h2 className="type-display mt-4 text-3xl text-balance text-fg">
             A score you can act on, not a vanity metric.
           </h2>
           <div className="mt-10 max-w-md">

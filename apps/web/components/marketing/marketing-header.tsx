@@ -33,35 +33,36 @@ export function MarketingHeader() {
   return (
     <header
       className={cn(
-        "sticky top-0 z-50 transition-[background-color,border-color,backdrop-filter] duration-normal",
+        "sticky top-0 z-50 border-b transition-[background-color,border-color,backdrop-filter] duration-normal",
         scrolled
-          ? "border-b border-border-subtle bg-surface-base/80 backdrop-blur-xl"
-          : "border-b border-transparent",
+          ? "border-border-strong bg-surface-base/85 backdrop-blur-xl"
+          : "border-border-subtle bg-surface-base",
       )}
     >
       <div className="container-page flex h-16 items-center justify-between gap-4">
         <Link
           href="/"
-          className="text-base font-semibold tracking-tight text-fg transition-opacity hover:opacity-80"
+          className="group flex items-center gap-2.5 transition-opacity hover:opacity-80"
         >
-          {SITE.name}
+          <span aria-hidden="true" className="size-3 rounded-[2px] bg-accent" />
+          <span className="type-display text-lg tracking-tight text-fg">{SITE.name}</span>
         </Link>
 
         {/* Desktop nav */}
-        <div className="hidden items-center gap-2 sm:flex">
+        <div className="hidden items-center gap-1 sm:flex">
           <nav aria-label="Main" className="flex items-center">
             {navLinks.map((l) => (
               <Link
                 key={l.href}
                 href={l.href}
-                className="rounded-lg px-3 py-1.5 text-sm text-fg-secondary transition-colors hover:bg-surface-raised hover:text-fg"
+                className="rounded-md px-3 py-1.5 font-mono text-2xs uppercase tracking-wide text-fg-secondary transition-colors hover:text-fg"
               >
                 {l.label}
               </Link>
             ))}
           </nav>
-          <ThemeToggle className="ml-1" />
-          <ButtonLink href="/login" size="sm" variant="secondary" className="ml-1">
+          <ThemeToggle className="ml-2" />
+          <ButtonLink href="/login" size="sm" variant="ghost" className="ml-2">
             Sign in
           </ButtonLink>
           <ButtonLink href="/signup" size="sm">
@@ -78,7 +79,7 @@ export function MarketingHeader() {
             aria-expanded={open}
             aria-controls="mobile-nav"
             aria-label={open ? "Close menu" : "Open menu"}
-            className="grid size-9 place-items-center rounded-lg text-fg-secondary ring-1 ring-inset ring-border-subtle transition-colors hover:bg-surface-raised hover:text-fg"
+            className="grid size-9 place-items-center rounded-md text-fg-secondary border border-border-default transition-colors hover:bg-surface-raised hover:text-fg"
           >
             {open ? <X className="size-4" /> : <Menu className="size-4" />}
           </button>
@@ -89,15 +90,15 @@ export function MarketingHeader() {
       <div
         id="mobile-nav"
         hidden={!open}
-        className="border-t border-border-subtle bg-surface-base px-5 pb-6 pt-4 sm:hidden"
+        className="border-t border-border-strong bg-surface-base px-5 pb-6 pt-4 sm:hidden"
       >
-        <nav aria-label="Mobile" className="flex flex-col gap-1">
+        <nav aria-label="Mobile" className="flex flex-col">
           {navLinks.map((l) => (
             <Link
               key={l.href}
               href={l.href}
               onClick={() => setOpen(false)}
-              className="rounded-lg px-3 py-2.5 text-sm text-fg-secondary transition-colors hover:bg-surface-raised hover:text-fg"
+              className="border-b border-border-subtle px-1 py-3 font-mono text-xs uppercase tracking-wide text-fg-secondary transition-colors hover:text-fg"
             >
               {l.label}
             </Link>

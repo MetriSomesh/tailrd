@@ -46,6 +46,8 @@ test.describe("landing sections render", () => {
   test("theme toggle switches to light and back", async ({ page }) => {
     await page.goto("/");
     const html = page.locator("html");
+    // Wait for hydration before interacting (default "System" becomes checked).
+    await expect(page.getByRole("radio", { name: "System" })).toBeChecked();
     await page.getByRole("radio", { name: "Light" }).click();
     await expect(html).toHaveAttribute("data-theme", "light");
     await page.getByRole("radio", { name: "Dark" }).click();
@@ -54,6 +56,7 @@ test.describe("landing sections render", () => {
 
   test("theme choice survives a reload", async ({ page }) => {
     await page.goto("/");
+    await expect(page.getByRole("radio", { name: "System" })).toBeChecked();
     await page.getByRole("radio", { name: "Light" }).click();
     await page.reload();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");

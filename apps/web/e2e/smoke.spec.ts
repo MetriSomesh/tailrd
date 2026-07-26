@@ -51,6 +51,10 @@ test.describe("accessibility", () => {
 
   test("no WCAG violations in light theme", async ({ page }) => {
     await page.goto("/");
+    // Wait for the control to hydrate — the default "System" option becomes
+    // checked once mounted, which means its click handler is attached. Clicking
+    // before this races React hydration and the click is silently dropped.
+    await expect(page.getByRole("radio", { name: "System" })).toBeChecked();
     // Use the real control, and confirm it applied, rather than setting the
     // attribute directly — that silently no-ops if the selector changes.
     await page.getByRole("radio", { name: "Light" }).click();

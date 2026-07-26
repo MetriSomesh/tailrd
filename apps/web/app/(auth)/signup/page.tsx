@@ -44,7 +44,7 @@ export default function SignupPage() {
 
       <div className="my-6 flex items-center gap-3">
         <span className="h-px flex-1 bg-border-subtle" />
-        <span className="text-2xs uppercase tracking-widest text-fg-quaternary">or</span>
+        <span className="font-mono text-2xs uppercase tracking-widest text-fg-quaternary">or</span>
         <span className="h-px flex-1 bg-border-subtle" />
       </div>
 
@@ -82,7 +82,7 @@ export default function SignupPage() {
         {error && (
           <div
             role="alert"
-            className="rounded-xl bg-danger-subtle px-3.5 py-2.5 text-sm text-danger"
+            className="rounded-md border border-danger/40 bg-danger-subtle px-3.5 py-2.5 text-sm text-danger"
           >
             {error}
           </div>
@@ -95,7 +95,7 @@ export default function SignupPage() {
 
       <p className="mt-6 text-center text-sm text-fg-tertiary">
         Already have an account?{" "}
-        <Link href="/login" className="font-medium text-accent hover:underline">
+        <Link href="/login" className="font-medium text-accent-text hover:underline">
           Sign in
         </Link>
       </p>

@@ -11,7 +11,7 @@ export function GoogleButton({ label = "Continue with Google" }: { label?: strin
   return (
     <a
       href={`${API_BASE_URL}/api/v1/auth/google/start`}
-      className="flex h-10 w-full items-center justify-center gap-2.5 rounded-xl bg-surface-raised text-sm font-medium text-fg ring-1 ring-inset ring-border-default transition-colors hover:bg-surface-overlay hover:ring-border-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      className="flex h-10 w-full items-center justify-center gap-2.5 rounded-md border border-border-strong bg-surface-raised text-sm font-medium text-fg transition-colors hover:bg-surface-sunken focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
     >
       <svg className="size-4" viewBox="0 0 24 24" aria-hidden="true">
         <path

@@ -61,9 +61,9 @@ export function ThemeToggle({ className }: { className?: string }) {
     <div
       role="radiogroup"
       aria-label="Colour theme"
+      data-ready={mounted ? "true" : undefined}
       className={cn(
-        "inline-flex items-center gap-0.5 rounded-full bg-surface-raised p-0.5",
-        "ring-1 ring-inset ring-border-subtle",
+        "inline-flex items-center gap-0.5 rounded-md border border-border-default bg-surface-raised p-0.5",
         className,
       )}
     >
@@ -79,11 +79,11 @@ export function ThemeToggle({ className }: { className?: string }) {
             title={label}
             onClick={() => select(value)}
             className={cn(
-              "grid size-7 place-items-center rounded-full transition-colors duration-fast",
+              "grid size-7 place-items-center rounded-[3px] transition-colors duration-fast",
               "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring",
               active
                 ? "bg-accent text-accent-contrast"
-                : "text-fg-tertiary hover:bg-surface-overlay hover:text-fg",
+                : "text-fg-tertiary hover:bg-surface-sunken hover:text-fg",
             )}
           >
             <Icon className="size-3.5" aria-hidden="true" />

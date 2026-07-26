@@ -31,9 +31,13 @@ export default function DashboardPage() {
       {/* Page header */}
       <Reveal className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="type-display text-3xl text-fg sm:text-4xl">Dashboard</h1>
-          <p className="mt-1.5 text-sm text-fg-tertiary">
-            {usage.freeLimit - usage.freeUsed} of {usage.freeLimit} free resumes left this month.
+          <p className="eyebrow flex items-center gap-2">
+            <span className="inline-block h-px w-6 bg-accent" />
+            Overview
+          </p>
+          <h1 className="type-display mt-3 text-3xl text-fg sm:text-4xl">Dashboard</h1>
+          <p className="mt-2 font-mono text-2xs uppercase tracking-wide text-fg-quaternary">
+            {usage.freeLimit - usage.freeUsed} of {usage.freeLimit} free resumes left this month
           </p>
         </div>
         <ButtonLink href="/tailor">
@@ -42,21 +46,28 @@ export default function DashboardPage() {
         </ButtonLink>
       </Reveal>
 
-      {/* Stat strip — single bordered row, not three floating cards */}
+      {/* Stat strip — one framed row divided by rules */}
       <Reveal delay={60}>
-        <div className="grid gap-px overflow-hidden rounded-2xl bg-border-subtle ring-1 ring-border-subtle sm:grid-cols-3">
+        <div className="grid overflow-hidden rounded-md border border-border-strong sm:grid-cols-3">
           <Stat
             Icon={FileText}
             label="Free usage"
             value={`${usage.freeUsed}/${usage.freeLimit}`}
             hint="resets on the 1st"
+            className="border-b border-border-subtle sm:border-b-0 sm:border-r"
           />
-          <Stat Icon={Wallet} label="Credits" value={String(usage.credits)} hint="never expire" />
+          <Stat
+            Icon={Wallet}
+            label="Credits"
+            value={String(usage.credits)}
+            hint="never expire"
+            className="border-b border-border-subtle sm:border-b-0 sm:border-r"
+          />
           <Stat
             Icon={TrendingUp}
             label="Best score"
             value={`${latest.score}%`}
-            hint={`${latest.company} — ${latest.role}`}
+            hint={`${latest.company} · ${latest.role}`}
           />
         </div>
       </Reveal>
@@ -65,30 +76,30 @@ export default function DashboardPage() {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
         {/* Latest result panel */}
         <Reveal delay={120}>
-          <section className="hairline-top flex h-full flex-col rounded-2xl bg-surface-raised p-6 ring-1 ring-border-subtle">
-            <header className="flex items-baseline justify-between gap-3">
-              <h2 className="text-sm font-medium text-fg">Latest result</h2>
-              <span className="font-mono text-2xs text-fg-quaternary">{latest.company}</span>
+          <section className="flex h-full flex-col rounded-md border border-border-default bg-surface-raised">
+            <header className="flex items-center justify-between gap-3 border-b border-border-subtle px-5 py-3">
+              <h2 className="mono-label">Latest result</h2>
+              <span className="font-mono text-2xs text-fg-tertiary">{latest.company}</span>
             </header>
 
-            <div className="mt-6 flex justify-center">
-              <ScoreGauge score={latest.score} size="lg" />
-            </div>
+            <div className="flex flex-col p-5">
+              <div className="flex justify-center">
+                <ScoreGauge score={latest.score} size="lg" />
+              </div>
 
-            <div className="mt-7 space-y-3">
-              {latest.subScores.map((s) => (
-                <div key={s.label} className="space-y-1.5">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="text-2xs text-fg-tertiary">{s.label}</span>
-                    <span className="font-mono text-2xs tabular-nums text-fg-secondary">
+              <div className="mt-6 divide-y divide-border-subtle border-y border-border-subtle">
+                {latest.subScores.map((s) => (
+                  <div key={s.label} className="flex items-center gap-3 py-2.5">
+                    <span className="mono-label w-24 shrink-0">{s.label}</span>
+                    <div className="h-1.5 flex-1 overflow-hidden rounded-[1px] bg-surface-sunken">
+                      <div className="h-full bg-accent" style={{ width: `${s.value}%` }} />
+                    </div>
+                    <span className="w-10 shrink-0 text-right font-mono text-2xs tabular-nums text-fg-secondary">
                       {s.value}%
                     </span>
                   </div>
-                  <div className="h-1 overflow-hidden rounded-full bg-border-subtle">
-                    <div className="h-full rounded-full bg-accent" style={{ width: `${s.value}%` }} />
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </section>
         </Reveal>
@@ -97,16 +108,16 @@ export default function DashboardPage() {
         <div className="space-y-6">
           {/* Gap panel */}
           <Reveal delay={180}>
-            <section className="hairline-top rounded-2xl bg-surface-raised p-6 ring-1 ring-border-subtle">
-              <h2 className="text-sm font-medium text-fg">Requirement coverage</h2>
-              <p className="mt-1 text-xs text-fg-quaternary">
+            <section className="rounded-md border border-border-default bg-surface-raised p-5">
+              <h2 className="mono-label">Requirement coverage</h2>
+              <p className="mt-1.5 text-xs text-fg-quaternary">
                 What the posting asked for, and what your resume answers.
               </p>
               <div className="mt-4 flex flex-wrap gap-1.5">
                 {latest.covered.map((c) => (
                   <span
                     key={c}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-success-subtle px-2.5 py-1 text-2xs font-medium text-success"
+                    className="inline-flex items-center gap-1.5 rounded-[2px] border border-success/30 bg-success-subtle px-2.5 py-1 font-mono text-2xs text-success"
                   >
                     <Check className="size-3" />
                     {c}
@@ -115,7 +126,7 @@ export default function DashboardPage() {
                 {latest.missing.map((m) => (
                   <span
                     key={m}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-danger-subtle px-2.5 py-1 text-2xs font-medium text-danger"
+                    className="inline-flex items-center gap-1.5 rounded-[2px] border border-danger/30 bg-danger-subtle px-2.5 py-1 font-mono text-2xs text-danger"
                   >
                     <X className="size-3" />
                     {m}
@@ -127,18 +138,18 @@ export default function DashboardPage() {
 
           {/* Recent runs */}
           <Reveal delay={240}>
-            <section className="hairline-top rounded-2xl bg-surface-raised p-6 ring-1 ring-border-subtle">
-              <header className="flex items-center justify-between gap-3">
-                <h2 className="text-sm font-medium text-fg">Recent runs</h2>
-                <ButtonLink href="/runs" variant="ghost" size="sm">
+            <section className="rounded-md border border-border-default bg-surface-raised">
+              <header className="flex items-center justify-between gap-3 border-b border-border-subtle px-5 py-3">
+                <h2 className="mono-label">Recent runs</h2>
+                <ButtonLink href="/runs" variant="ghost" size="sm" className="h-auto px-1 py-0">
                   View all
                   <ArrowUpRight className="size-3.5" />
                 </ButtonLink>
               </header>
 
-              <ul className="mt-4 divide-y divide-border-subtle">
+              <ul className="divide-y divide-border-subtle">
                 {recent.map((r) => (
-                  <li key={r.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                  <li key={r.id} className="flex items-center gap-3 px-5 py-3">
                     <StatusDot status={r.status} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm text-fg">
@@ -148,11 +159,11 @@ export default function DashboardPage() {
                     </div>
                     <span className="shrink-0 font-mono text-2xs text-fg-quaternary">{r.date}</span>
                     {r.score !== null ? (
-                      <span className="shrink-0 rounded-full bg-surface-overlay px-2 py-0.5 font-mono text-2xs tabular-nums text-fg-secondary">
+                      <span className="shrink-0 rounded-[2px] border border-border-subtle px-2 py-0.5 font-mono text-2xs tabular-nums text-fg-secondary">
                         {r.score}%
                       </span>
                     ) : (
-                      <span className="shrink-0 rounded-full bg-accent-subtle px-2 py-0.5 text-2xs font-medium text-accent">
+                      <span className="shrink-0 rounded-[2px] border border-accent/40 bg-accent-subtle px-2 py-0.5 font-mono text-2xs uppercase text-accent-text">
                         {r.status}
                       </span>
                     )}
@@ -174,30 +185,29 @@ function Stat({
   label,
   value,
   hint,
+  className,
 }: {
   Icon: typeof FileText;
   label: string;
   value: string;
   hint: string;
+  className?: string;
 }) {
   return (
-    <div className="bg-surface-base p-5 transition-colors duration-normal hover:bg-surface-raised">
+    <div className={cn("bg-surface-raised p-5", className)}>
       <div className="flex items-center gap-2">
         <Icon className="size-3.5 text-fg-quaternary" aria-hidden="true" />
-        <span className="text-2xs font-medium uppercase tracking-widest text-fg-tertiary">
-          {label}
-        </span>
+        <span className="mono-label">{label}</span>
       </div>
-      <div className="mt-2.5">
-        <span className="type-display text-2xl text-fg">{value}</span>
-        <span className="mt-0.5 block text-xs text-fg-quaternary">{hint}</span>
+      <div className="mt-3">
+        <span className="type-display text-3xl text-fg">{value}</span>
+        <span className="mt-1 block font-mono text-2xs text-fg-quaternary">{hint}</span>
       </div>
     </div>
   );
 }
 
 function StatusDot({ status }: { status: string }) {
-  // role="img" is required for aria-label to be valid on a generic element.
   if (status === "running" || status === "queued") {
     return (
       <span role="img" aria-label={status} className="relative flex size-2 shrink-0">

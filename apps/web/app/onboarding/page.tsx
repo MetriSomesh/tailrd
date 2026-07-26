@@ -21,9 +21,10 @@ const steps = [
 export default function OnboardingPage() {
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="container-page flex h-16 items-center justify-between">
-        <Link href="/" className="text-base font-semibold tracking-tight text-fg">
-          {SITE.name}
+      <header className="container-page flex h-16 items-center justify-between border-b border-border-subtle">
+        <Link href="/" className="flex items-center gap-2.5">
+          <span aria-hidden="true" className="size-3 rounded-[2px] bg-accent" />
+          <span className="type-display text-lg tracking-tight text-fg">{SITE.name}</span>
         </Link>
         <ThemeToggle />
       </header>
@@ -31,8 +32,11 @@ export default function OnboardingPage() {
       <main id="main" className="container-page flex flex-1 items-center py-12">
         <div className="mx-auto w-full max-w-2xl">
           <Reveal>
-            <p className="eyebrow">Welcome</p>
-            <h1 className="type-display mt-3 text-fluid-h2 text-balance text-fg">
+            <p className="eyebrow flex items-center gap-2">
+              <span className="inline-block h-px w-6 bg-accent" />
+              Welcome
+            </p>
+            <h1 className="type-display mt-4 text-fluid-h2 text-balance text-fg">
               Let&apos;s build your base resume
             </h1>
             <p className="mt-4 max-w-lg text-fg-secondary">
@@ -42,21 +46,18 @@ export default function OnboardingPage() {
           </Reveal>
 
           <Reveal delay={80}>
-            <ol className="mt-10 space-y-px overflow-hidden rounded-2xl ring-1 ring-border-subtle">
+            <ol className="mt-10 overflow-hidden rounded-md border border-border-strong divide-y divide-border-subtle">
               {steps.map(({ Icon, title, body }, i) => (
-                <li
-                  key={title}
-                  className="flex items-start gap-4 bg-surface-raised p-5"
-                >
-                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent-subtle ring-1 ring-inset ring-accent/15">
-                    <Icon className="size-4 text-accent" />
+                <li key={title} className="group flex items-start gap-4 bg-surface-raised p-5">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border-default text-fg transition-colors group-hover:border-border-strong">
+                    <Icon className="size-4" />
                   </div>
-                  <div className="min-w-0">
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-mono text-2xs tabular-nums text-fg-quaternary">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline gap-2.5">
+                      <span className="font-mono text-2xs tabular-nums text-accent-text">
                         {String(i + 1).padStart(2, "0")}
                       </span>
-                      <h2 className="text-sm font-medium text-fg">{title}</h2>
+                      <h2 className="text-sm font-semibold text-fg">{title}</h2>
                     </div>
                     <p className="mt-1 text-sm text-fg-tertiary">{body}</p>
                   </div>

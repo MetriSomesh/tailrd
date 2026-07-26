@@ -6,28 +6,29 @@ type Variant = "primary" | "secondary" | "ghost" | "danger";
 type Size = "sm" | "md" | "lg";
 
 const base =
-  "inline-flex shrink-0 items-center justify-center whitespace-nowrap font-medium " +
-  "transition-[background-color,box-shadow,transform,color] duration-fast " +
+  "group/btn inline-flex shrink-0 items-center justify-center whitespace-nowrap font-semibold " +
+  "transition-[background-color,box-shadow,transform,color,border-color] duration-fast " +
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring " +
-  "active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50";
+  "active:translate-y-px disabled:pointer-events-none disabled:opacity-50";
 
 const variantStyles: Record<Variant, string> = {
-  // Accent fill. The shadow is tinted with the accent so it reads as light, not dirt.
+  // Chartreuse fill, ink text. Flat and confident — no glow, no gradient.
   primary:
-    "bg-accent text-accent-contrast shadow-[0_1px_2px_0_oklch(0_0_0/0.24),0_6px_16px_-6px_var(--accent)] " +
-    "hover:bg-accent-hover hover:shadow-[0_1px_2px_0_oklch(0_0_0/0.24),0_10px_24px_-8px_var(--accent)] " +
-    "active:bg-accent-active",
+    "bg-accent text-accent-contrast border border-transparent " +
+    "hover:bg-accent-hover active:bg-accent-active",
+  // Framed. The border does the work, in the strong ink/paper rule colour.
   secondary:
-    "bg-surface-raised text-fg ring-1 ring-inset ring-border-default " +
-    "hover:bg-surface-overlay hover:ring-border-strong",
-  ghost: "text-fg-secondary hover:bg-surface-raised hover:text-fg",
-  danger: "bg-danger-subtle text-danger ring-1 ring-inset ring-danger/25 hover:bg-danger/20",
+    "bg-surface-raised text-fg border border-border-strong " +
+    "hover:bg-surface-sunken",
+  ghost: "text-fg-secondary border border-transparent hover:bg-surface-raised hover:text-fg",
+  danger:
+    "bg-surface-raised text-danger border border-danger/40 hover:bg-danger-subtle",
 };
 
 const sizeStyles: Record<Size, string> = {
-  sm: "h-8 gap-1.5 rounded-lg px-3 text-xs",
-  md: "h-10 gap-2 rounded-lg px-4 text-sm",
-  lg: "h-12 gap-2.5 rounded-xl px-6 text-base",
+  sm: "h-8 gap-1.5 rounded-md px-3 text-xs",
+  md: "h-10 gap-2 rounded-md px-4 text-sm",
+  lg: "h-12 gap-2.5 rounded-md px-6 text-base",
 };
 
 function styles(variant: Variant, size: Size, className?: string) {

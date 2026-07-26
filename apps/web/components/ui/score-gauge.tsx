@@ -99,13 +99,6 @@ export function ScoreGauge({
       aria-valuenow={score}
       aria-label={label}
     >
-      {/* Soft halo in the score's own colour — gives the number presence. */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-[18%] rounded-full blur-2xl"
-        style={{ background: colour, opacity: 0.14 }}
-      />
-
       <svg
         width={box}
         height={box}

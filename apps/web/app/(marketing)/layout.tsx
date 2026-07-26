@@ -19,20 +19,23 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
         {children}
       </main>
 
-      <footer className="border-t border-border-subtle">
+      <footer className="border-t border-border-strong">
         <div className="container-page flex flex-col gap-6 py-10 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <p className="text-sm font-semibold tracking-tight text-fg">{SITE.name}</p>
-            <p className="text-xs text-fg-quaternary">
-              &copy; {new Date().getFullYear()} {SITE.legalEntity}. All rights reserved.
-            </p>
+          <div className="flex items-center gap-2.5">
+            <span aria-hidden="true" className="size-3 rounded-[2px] bg-accent" />
+            <div>
+              <p className="type-display text-base tracking-tight text-fg">{SITE.name}</p>
+              <p className="mt-0.5 font-mono text-2xs uppercase tracking-wide text-fg-quaternary">
+                &copy; {new Date().getFullYear()} {SITE.legalEntity}
+              </p>
+            </div>
           </div>
-          <nav aria-label="Footer" className="flex flex-wrap gap-x-5 gap-y-2">
+          <nav aria-label="Footer" className="flex flex-wrap gap-x-6 gap-y-2">
             {footerLinks.map((l) => (
               <Link
                 key={l.href}
                 href={l.href}
-                className="text-xs text-fg-tertiary transition-colors hover:text-fg"
+                className="font-mono text-2xs uppercase tracking-wide text-fg-tertiary transition-colors hover:text-fg"
               >
                 {l.label}
               </Link>

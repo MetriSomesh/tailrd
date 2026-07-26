@@ -43,7 +43,7 @@ export default function LoginPage() {
 
       <div className="my-6 flex items-center gap-3">
         <span className="h-px flex-1 bg-border-subtle" />
-        <span className="text-2xs uppercase tracking-widest text-fg-quaternary">or</span>
+        <span className="font-mono text-2xs uppercase tracking-widest text-fg-quaternary">or</span>
         <span className="h-px flex-1 bg-border-subtle" />
       </div>
 
@@ -59,12 +59,12 @@ export default function LoginPage() {
         />
         <div className="space-y-1.5">
           <div className="flex items-baseline justify-between">
-            <span className="text-sm font-medium text-fg" id="pw-label">
+            <span className="font-mono text-2xs font-medium uppercase tracking-wide text-fg-secondary" id="pw-label">
               Password
             </span>
             <Link
               href="/forgot-password"
-              className="text-2xs text-accent hover:underline"
+              className="font-mono text-2xs text-accent-text hover:underline"
             >
               Forgot password?
             </Link>
@@ -77,14 +77,14 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Your password"
-            className="w-full rounded-xl border border-border-default bg-surface-sunken px-3.5 py-2.5 text-sm text-fg transition-colors placeholder:text-fg-tertiary focus:border-accent focus:outline-none focus:ring-4 focus:ring-accent/12"
+            className="w-full rounded-md border border-border-default bg-surface-sunken px-3.5 py-2.5 text-sm text-fg transition-colors placeholder:text-fg-tertiary focus:border-fg-primary focus:outline-none focus:ring-2 focus:ring-fg-primary/15"
           />
         </div>
 
         {error && (
           <div
             role="alert"
-            className="rounded-xl bg-danger-subtle px-3.5 py-2.5 text-sm text-danger"
+            className="rounded-md border border-danger/40 bg-danger-subtle px-3.5 py-2.5 text-sm text-danger"
           >
             {error}
           </div>
@@ -97,7 +97,7 @@ export default function LoginPage() {
 
       <p className="mt-6 text-center text-sm text-fg-tertiary">
         New here?{" "}
-        <Link href="/signup" className="font-medium text-accent hover:underline">
+        <Link href="/signup" className="font-medium text-accent-text hover:underline">
           Create an account
         </Link>
       </p>

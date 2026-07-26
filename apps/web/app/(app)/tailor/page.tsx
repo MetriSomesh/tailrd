@@ -31,7 +31,7 @@ export default function TailorPage() {
   if (done) {
     return (
       <Reveal className="mx-auto flex max-w-md flex-col items-center py-20 text-center">
-        <div className="grid size-14 place-items-center rounded-2xl bg-success-subtle ring-1 ring-inset ring-success/20">
+        <div className="grid size-14 place-items-center rounded-md border border-success/40 bg-success-subtle">
           <CheckCircle2 className="size-6 text-success" />
         </div>
         <h1 className="type-display mt-6 text-3xl text-fg">Queued</h1>
@@ -44,12 +44,15 @@ export default function TailorPage() {
             Watch progress
             <ArrowRight className="size-4" />
           </ButtonLink>
-          <Button variant="secondary" onClick={() => {
-            setDone(false);
-            setJd("");
-            setCompany("");
-            setRole("");
-          }}>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setDone(false);
+              setJd("");
+              setCompany("");
+              setRole("");
+            }}
+          >
             Tailor another
           </Button>
         </div>
@@ -60,7 +63,11 @@ export default function TailorPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <Reveal>
-        <h1 className="type-display text-3xl text-fg sm:text-4xl">Tailor a resume</h1>
+        <p className="eyebrow flex items-center gap-2">
+          <span className="inline-block h-px w-6 bg-accent" />
+          New run
+        </p>
+        <h1 className="type-display mt-3 text-3xl text-fg sm:text-4xl">Tailor a resume</h1>
         <p className="mt-2 text-sm text-fg-tertiary">
           Paste the posting. We rewrite your resume for it and score the result.
         </p>
@@ -69,15 +76,15 @@ export default function TailorPage() {
       <Reveal delay={80}>
         <form onSubmit={submit} className="space-y-6">
           {/* JD */}
-          <div className="hairline-top rounded-2xl bg-surface-raised p-5 ring-1 ring-border-subtle sm:p-6">
-            <div className="flex items-baseline justify-between gap-3">
-              <label htmlFor="jd" className="text-sm font-medium text-fg">
+          <div className="rounded-md border border-border-default bg-surface-raised">
+            <div className="flex items-baseline justify-between gap-3 border-b border-border-subtle px-5 py-3">
+              <label htmlFor="jd" className="mono-label">
                 Job description
               </label>
               <span
                 className={cn(
                   "font-mono text-2xs tabular-nums",
-                  remaining > 0 ? "text-fg-quaternary" : "text-success",
+                  remaining > 0 ? "text-fg-quaternary" : "text-accent-text",
                 )}
               >
                 {remaining > 0 ? `${remaining} more characters` : `${jd.trim().length} characters`}
@@ -91,30 +98,20 @@ export default function TailorPage() {
               value={jd}
               onChange={(e) => setJd(e.target.value)}
               placeholder={"Paste the full posting here — responsibilities, requirements, everything.\n\nThe more complete it is, the more accurate the score."}
-              className="mt-3 w-full resize-y rounded-xl border border-border-default bg-surface-sunken px-4 py-3.5 text-sm leading-relaxed text-fg transition-colors placeholder:text-fg-tertiary focus:border-accent focus:outline-none focus:ring-4 focus:ring-accent/12"
+              className="w-full resize-y rounded-b-md bg-surface-raised px-5 py-4 text-sm leading-relaxed text-fg transition-colors placeholder:text-fg-tertiary focus:outline-none focus:ring-0"
             />
           </div>
 
           {/* Optional metadata */}
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              id="company"
-              label="Company"
-              placeholder="Lexi"
-              value={company}
-              onChange={setCompany}
-            />
-            <Field
-              id="role"
-              label="Role"
-              placeholder="AI Engineer"
-              value={role}
-              onChange={setRole}
-            />
+            <Field id="company" label="Company" placeholder="Lexi" value={company} onChange={setCompany} />
+            <Field id="role" label="Role" placeholder="AI Engineer" value={role} onChange={setRole} />
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <p className="text-xs text-fg-quaternary">Uses 1 of your 3 free monthly resumes.</p>
+          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border-subtle pt-6">
+            <p className="font-mono text-2xs uppercase tracking-wide text-fg-quaternary">
+              Uses 1 of your 3 free monthly resumes
+            </p>
             <Button type="submit" size="lg" loading={loading} disabled={!canSubmit}>
               <Sparkles className="size-4" />
               {loading ? "Tailoring…" : "Tailor resume"}
@@ -141,9 +138,9 @@ function Field({
 }) {
   return (
     <div className="space-y-2">
-      <label htmlFor={id} className="text-sm font-medium text-fg">
-        {label}
-        <span className="ml-1.5 text-2xs font-normal text-fg-quaternary">optional</span>
+      <label htmlFor={id} className="flex items-center gap-1.5">
+        <span className="mono-label">{label}</span>
+        <span className="font-mono text-2xs lowercase text-fg-tertiary">optional</span>
       </label>
       <input
         id={id}
@@ -151,7 +148,7 @@ function Field({
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border border-border-default bg-surface-sunken px-4 py-2.5 text-sm text-fg transition-colors placeholder:text-fg-tertiary focus:border-accent focus:outline-none focus:ring-4 focus:ring-accent/12"
+        className="w-full rounded-md border border-border-default bg-surface-sunken px-4 py-2.5 text-sm text-fg transition-colors placeholder:text-fg-tertiary focus:border-fg-primary focus:outline-none focus:ring-2 focus:ring-fg-primary/15"
       />
     </div>
   );

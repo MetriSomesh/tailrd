@@ -25,14 +25,15 @@ export function AppHeader() {
   }, [pathname]);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border-subtle bg-surface-base/85 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-border-strong bg-surface-base/85 backdrop-blur-xl">
       <div className="container-page flex h-16 items-center gap-4">
-        <Link href="/dashboard" className="text-base font-semibold tracking-tight text-fg">
-          {SITE.name}
+        <Link href="/dashboard" className="flex items-center gap-2.5">
+          <span aria-hidden="true" className="size-3 rounded-[2px] bg-accent" />
+          <span className="type-display text-lg tracking-tight text-fg">{SITE.name}</span>
         </Link>
 
-        {/* Desktop nav — pill-style active state */}
-        <nav aria-label="Main" className="ml-4 hidden items-center gap-0.5 md:flex">
+        {/* Desktop nav — underline active state, mono labels */}
+        <nav aria-label="Main" className="ml-6 hidden items-center gap-1 md:flex">
           {nav.map(({ href, label, Icon }) => {
             const active = pathname === href;
             return (
@@ -41,10 +42,10 @@ export function AppHeader() {
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors duration-fast",
+                  "flex items-center gap-2 border-b-2 px-2.5 py-1.5 font-mono text-2xs uppercase tracking-wide transition-colors duration-fast -mb-px",
                   active
-                    ? "bg-surface-raised font-medium text-fg ring-1 ring-inset ring-border-subtle"
-                    : "text-fg-tertiary hover:bg-surface-raised/60 hover:text-fg-secondary",
+                    ? "border-accent text-fg"
+                    : "border-transparent text-fg-tertiary hover:text-fg",
                 )}
               >
                 <Icon className="size-3.5" aria-hidden="true" />
@@ -66,7 +67,7 @@ export function AppHeader() {
             aria-expanded={open}
             aria-controls="app-mobile-nav"
             aria-label={open ? "Close menu" : "Open menu"}
-            className="grid size-9 place-items-center rounded-lg text-fg-secondary ring-1 ring-inset ring-border-subtle transition-colors hover:bg-surface-raised hover:text-fg md:hidden"
+            className="grid size-9 place-items-center rounded-md text-fg-secondary border border-border-default transition-colors hover:bg-surface-raised hover:text-fg md:hidden"
           >
             {open ? <X className="size-4" /> : <Menu className="size-4" />}
           </button>
@@ -77,9 +78,9 @@ export function AppHeader() {
       <div
         id="app-mobile-nav"
         hidden={!open}
-        className="border-t border-border-subtle bg-surface-base px-5 pb-5 pt-3 md:hidden"
+        className="border-t border-border-strong bg-surface-base px-5 pb-5 pt-2 md:hidden"
       >
-        <nav aria-label="Mobile" className="flex flex-col gap-0.5">
+        <nav aria-label="Mobile" className="flex flex-col">
           {nav.map(({ href, label, Icon }) => {
             const active = pathname === href;
             return (
@@ -88,14 +89,13 @@ export function AppHeader() {
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors",
-                  active
-                    ? "bg-surface-raised font-medium text-fg"
-                    : "text-fg-secondary hover:bg-surface-raised/60",
+                  "flex items-center gap-2.5 border-b border-border-subtle px-1 py-3 font-mono text-xs uppercase tracking-wide transition-colors",
+                  active ? "text-fg" : "text-fg-secondary hover:text-fg",
                 )}
               >
-                <Icon className="size-4" aria-hidden="true" />
+                <Icon className="size-4 shrink-0" aria-hidden="true" />
                 {label}
+                {active && <span aria-hidden="true" className="ml-auto size-1.5 rounded-full bg-accent" />}
               </Link>
             );
           })}
