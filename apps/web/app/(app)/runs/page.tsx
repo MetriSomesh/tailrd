@@ -74,7 +74,7 @@ export default function RunsPage() {
                     </span>
                   ) : (
                     <span className="rounded-[2px] border border-border-subtle px-2 py-0.5 font-mono text-2xs uppercase text-fg-tertiary">
-                      {run.status === "running" ? "···" : "—"}
+                      {run.status === "running" ? "···" : "n/a"}
                     </span>
                   )}
                 </span>

@@ -220,7 +220,15 @@
 
 /* ==========================================================================
    Base
+
+   These element resets MUST live in @layer base. Tailwind's utilities live in
+   @layer utilities; unlayered rules beat every layer, so an unlayered
+   `p { margin: 0 }` would silently override every `mt-*` / `mb-*` utility, and
+   `h1 { line-height }` would override the display type scale. Layering fixes
+   the precedence so utilities win, as expected.
    ========================================================================== */
+
+@layer base {
 
 *,
 *::before,
@@ -342,6 +350,8 @@ button {
 button:disabled {
   cursor: not-allowed;
 }
+
+} /* end @layer base */
 
 /* ==========================================================================
    Utilities

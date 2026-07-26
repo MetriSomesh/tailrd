@@ -18,14 +18,14 @@ export default function RefundPolicyPage() {
 
       <h2>Weekly Subscription (₹149)</h2>
       <ul>
-        <li>Cancel anytime — access continues until the end of the current 7-day period</li>
+        <li>Cancel anytime. Access continues until the end of the current 7-day period</li>
         <li>No prorated refunds for partial periods</li>
         <li>Cancellation takes effect at the next renewal date</li>
       </ul>
 
       <h2>Monthly Subscription (₹349)</h2>
       <ul>
-        <li>Cancel anytime — access continues until the end of the current 30-day period</li>
+        <li>Cancel anytime. Access continues until the end of the current 30-day period</li>
         <li>No prorated refunds for partial periods</li>
         <li>Cancellation takes effect at the next renewal date</li>
       </ul>

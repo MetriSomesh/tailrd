@@ -36,8 +36,8 @@ export default function TailorPage() {
         </div>
         <h1 className="type-display mt-6 text-3xl text-fg">Queued</h1>
         <p className="mt-3 text-pretty text-sm leading-relaxed text-fg-secondary">
-          Your resume is being tailored. It usually takes under a minute — we will have the
-          scored DOCX and gap report waiting on the runs page.
+          Your resume is being tailored. It usually takes under a minute. The scored DOCX and
+          gap report will be waiting on the runs page.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <ButtonLink href="/runs">
@@ -97,7 +97,7 @@ export default function TailorPage() {
               required
               value={jd}
               onChange={(e) => setJd(e.target.value)}
-              placeholder={"Paste the full posting here — responsibilities, requirements, everything.\n\nThe more complete it is, the more accurate the score."}
+              placeholder={"Paste the full posting here: responsibilities, requirements, everything.\n\nThe more complete it is, the more accurate the score."}
               className="w-full resize-y rounded-b-md bg-surface-raised px-5 py-4 text-sm leading-relaxed text-fg transition-colors placeholder:text-fg-tertiary focus:outline-none focus:ring-0"
             />
           </div>
