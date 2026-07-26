@@ -53,3 +53,6 @@ class TailorRun(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     # Entitlement tracking (for refunds on system errors)
     entitlement_consumed: Mapped[bool] = mapped_column(default=False, nullable=False)
     entitlement_refunded: Mapped[bool] = mapped_column(default=False, nullable=False)
+    # Which bucket was consumed: "subscription" | "credit" | "free". Needed so a
+    # refund after a system failure returns the unit to the right place.
+    entitlement_source: Mapped[str | None] = mapped_column(String(20))

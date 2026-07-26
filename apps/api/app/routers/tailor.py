@@ -13,11 +13,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.deps import get_current_user, get_verified_user, require_csrf
 from app.core.errors import NotFoundError, OnboardingIncompleteError, QueueUnavailableError
-from app.db.base import new_uuid
+from app.db.base import new_uuid, utcnow
 from app.db.models.profile import Profile
 from app.db.models.run import TailorRun
 from app.db.models.user import User
 from app.db.session import get_session
+from app.services.quota import check_and_consume_entitlement, refund_entitlement
 from app.services.storage import get_storage
 from app.workers.runner import enqueue_job
 
@@ -90,7 +91,10 @@ async def submit_tailor_job(
     if not profile or not profile.is_complete:
         raise OnboardingIncompleteError("Complete your profile before tailoring a resume.")
 
-    # TODO Phase 6: quota check here
+    # Quota: consume one entitlement unit up front. Raises QuotaExceededError (402)
+    # or FairUseExceededError (429) if the user is out of allowance. Nothing is
+    # created if this raises.
+    entitlement_source = await check_and_consume_entitlement(db, user.id)
 
     # Create the run
     run = TailorRun(
@@ -102,7 +106,8 @@ async def submit_tailor_job(
         jd_label=_extract_label(body.jd_text),
         company=body.company,
         role=body.role,
-        entitlement_consumed=True,  # TODO: set properly in Phase 6
+        entitlement_consumed=True,
+        entitlement_source=entitlement_source,
     )
     db.add(run)
     await db.commit()
@@ -110,12 +115,17 @@ async def submit_tailor_job(
     # Enqueue the job
     enqueued = await enqueue_job(run.id)
     if not enqueued:
-        # Redis down — mark the run for retry
-        run.status = "queued"
-        run.error_message = "Queue temporarily unavailable, will retry."
+        # Queue is down: nothing will process this run, so refund what we just
+        # consumed and fail the run rather than silently charging for nothing.
+        await refund_entitlement(db, user.id, entitlement_source)
+        run.status = "failed"
+        run.error_code = "queue_unavailable"
+        run.error_message = "Job queue is temporarily unavailable."
+        run.entitlement_refunded = True
+        run.finished_at = utcnow()
         await db.commit()
         raise QueueUnavailableError(
-            "Job queue is temporarily unavailable. Your request was saved and will be processed shortly.",
+            "Job queue is temporarily unavailable. Please try again in a moment.",
             retry_after=10,
         )
 

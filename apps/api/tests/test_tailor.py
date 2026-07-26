@@ -184,6 +184,101 @@ class TestGetRun:
         assert r.status_code in (401, 404)
 
 
+class TestQuotaEnforcement:
+    async def test_free_tier_exhaustion_returns_402(self, client: AsyncClient) -> None:
+        await _create_complete_user(client)
+        csrf = client.cookies.get("tailrd_csrf")
+        # Three free resumes are allowed.
+        for _ in range(3):
+            r = await client.post(
+                "/api/v1/tailor",
+                json={"jd_text": JD_TEXT},
+                headers={"X-CSRF-Token": csrf},
+            )
+            assert r.status_code == 202
+        # The fourth is blocked with 402.
+        r = await client.post(
+            "/api/v1/tailor",
+            json={"jd_text": JD_TEXT},
+            headers={"X-CSRF-Token": csrf},
+        )
+        assert r.status_code == 402
+        assert r.json()["code"] == "quota_exceeded"
+
+    async def test_submit_decrements_free_usage(self, client: AsyncClient) -> None:
+        await _create_complete_user(client)
+        csrf = client.cookies.get("tailrd_csrf")
+        await client.post(
+            "/api/v1/tailor",
+            json={"jd_text": JD_TEXT},
+            headers={"X-CSRF-Token": csrf},
+        )
+        r = await client.get("/api/v1/billing/usage")
+        body = r.json()
+        assert body["free_used"] == 1
+        assert body["free_remaining"] == 2
+
+    async def test_credit_consumed_when_no_free_left(self, client: AsyncClient) -> None:
+        await _create_complete_user(client)
+        csrf = client.cookies.get("tailrd_csrf")
+        # Exhaust free tier.
+        for _ in range(3):
+            await client.post(
+                "/api/v1/tailor", json={"jd_text": JD_TEXT}, headers={"X-CSRF-Token": csrf}
+            )
+        # Grant a credit directly, then the next submit should consume it.
+        from sqlalchemy import select
+
+        from app.db.models.user import User
+        from app.db.session import get_sessionmaker
+        from app.services.quota import add_credits
+
+        async with get_sessionmaker()() as db:
+            uid = (
+                await db.execute(select(User).where(User.email == "tailor@test.com"))
+            ).scalar_one().id
+            await add_credits(db, uid, 1)
+            await db.commit()
+
+        r = await client.post(
+            "/api/v1/tailor", json={"jd_text": JD_TEXT}, headers={"X-CSRF-Token": csrf}
+        )
+        assert r.status_code == 202
+        usage = (await client.get("/api/v1/billing/usage")).json()
+        assert usage["credit_balance"] == 0
+
+    async def test_entitlement_refunded_on_system_failure(
+        self, client: AsyncClient, monkeypatch
+    ) -> None:
+        await _create_complete_user(client)
+        csrf = client.cookies.get("tailrd_csrf")
+
+        # Force the agent to fail with a refundable (system) error.
+        from app.core.errors import AgentUnavailableError
+        from app.services import tailor as tailor_service
+
+        async def _boom(*_a, **_k):
+            raise AgentUnavailableError("engine down")
+
+        monkeypatch.setattr(tailor_service, "run_agent", _boom)
+
+        submit = await client.post(
+            "/api/v1/tailor", json={"jd_text": JD_TEXT}, headers={"X-CSRF-Token": csrf}
+        )
+        run_id = submit.json()["run_id"]
+        # Free usage was consumed on submit.
+        assert (await client.get("/api/v1/billing/usage")).json()["free_used"] == 1
+
+        from app.workers.runner import _tick
+
+        await _tick()
+
+        detail = (await client.get(f"/api/v1/runs/{run_id}")).json()
+        assert detail["status"] == "failed"
+        # The consumed free resume must be refunded.
+        assert (await client.get("/api/v1/billing/usage")).json()["free_used"] == 0
+
+
 class TestWorkerExecution:
     async def test_worker_processes_queued_job(self, client: AsyncClient) -> None:
         """Submit a job, manually tick the worker, verify it completes."""

@@ -116,10 +116,22 @@ async def execute_tailor_job(db: AsyncSession, run_id: str) -> None:
         run.error_message = error_message
         run.finished_at = utcnow()
 
-        # Auto-refund entitlement on system errors
-        if error_code in REFUNDABLE_ERROR_CODES and run.entitlement_consumed:
+        # Auto-refund entitlement on system errors (not on user-caused ones).
+        if (
+            error_code in REFUNDABLE_ERROR_CODES
+            and run.entitlement_consumed
+            and not run.entitlement_refunded
+        ):
+            from app.services.quota import refund_entitlement
+
+            await refund_entitlement(db, run.user_id, run.entitlement_source or "free")
             run.entitlement_refunded = True
-            log.info("tailor_job_entitlement_refunded", run_id=run_id, error_code=error_code)
+            log.info(
+                "tailor_job_entitlement_refunded",
+                run_id=run_id,
+                error_code=error_code,
+                source=run.entitlement_source,
+            )
 
         await db.commit()
         log.error(

@@ -34,6 +34,7 @@ async def health() -> dict[str, Any]:
 @router.get("/ready", summary="Readiness probe")
 async def ready(response: Response) -> dict[str, Any]:
     from app.db.session import check_database
+    from app.services.agent import check_agent
     from app.services.cache import check_redis
 
     checks: dict[str, dict[str, Any]] = {}
@@ -44,6 +45,11 @@ async def ready(response: Response) -> dict[str, Any]:
     redis_ok, redis_detail = await check_redis()
     checks["redis"] = {"ok": redis_ok, "detail": redis_detail}
 
+    # Agent preflight (CLI reachable for the opencode backend). Informational:
+    # a broken agent degrades tailoring but auth/reads still work.
+    agent_ok, agent_detail = await check_agent()
+    checks["agent"] = {"ok": agent_ok, "detail": agent_detail}
+
     # The DB is required to serve anything meaningful. Redis being down degrades
     # the tailor endpoint but auth and reads still work, so it does not fail
     # readiness on its own.
@@ -53,6 +59,6 @@ async def ready(response: Response) -> dict[str, Any]:
 
     return {
         "status": "ready" if overall else "not_ready",
-        "degraded": overall and not redis_ok,
+        "degraded": overall and (not redis_ok or not agent_ok),
         "checks": checks,
     }

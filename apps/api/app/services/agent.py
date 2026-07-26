@@ -106,23 +106,102 @@ class MockAgentBackend(AgentBackend):
 # ---------------------------------------------------------------------------
 
 
+# The agent's single responsibility is to rewrite the editable sections and
+# write tailored.json. DOCX generation, ATS scoring and iteration are handled by
+# our Python pipeline (services/tailor.py), so the prompt is deliberately narrow
+# and deterministic rather than delegating the whole SKILL loop to the model.
+_TAILOR_PROMPT = """\
+You are an ATS resume-tailoring engine. Work only with the files in the current \
+directory. Do not ask questions.
+
+1. Read `base_resume.json` (the candidate's master resume) and `temp_jd.txt` \
+(the target job description).
+2. Produce a tailored resume and WRITE it to `tailored.json` in the current \
+directory as valid JSON. Write nothing else and print nothing else.
+
+The output JSON MUST have exactly two top-level keys: "immutable" and "editable".
+
+IMMUTABLE — copy through unchanged from base_resume.json:
+- immutable.name, immutable.contact, immutable.education
+- for each experience: its title, company, location and dates
+
+EDITABLE — rewrite to match the job description:
+- editable.about: 2-3 punchy sentences. Start with the candidate's existing hook \
+line if present, then weave in the skills and terms the JD emphasises. No generic \
+filler ("team player", "hard working", "passionate").
+- editable.skills: an object mapping category names to arrays, e.g. \
+{"Languages": ["Python"], "Frameworks": ["FastAPI"]}. Order categories by JD \
+relevance. Only include skills the candidate plausibly has from base_resume.json.
+- editable.experience: keep only the 2 most relevant roles for this JD. Each \
+bullet must carry a concrete, defensible impact (scope, numbers or outcome). Never \
+invent precise metrics you could not justify in an interview.
+- editable.projects: 3-4 entries. Each description is 2-3 achievement lines \
+separated by newlines, naming the tech used and the impact.
+
+If the environment variable ALLOW_AI_PROJECTS is "false", do NOT invent new \
+projects — only rewrite the candidate's existing ones.
+"""
+
+
 class OpenCodeAgentBackend(AgentBackend):
-    """Spawns OpenCode as a subprocess in an ephemeral workspace.
+    """Spawns OpenCode in non-interactive mode in an ephemeral workspace.
 
     Lifecycle:
-    1. Create workspace dir with base_resume.json + temp_jd.txt
-    2. Spawn `opencode run` with SKILL.md on the skills path
+    1. Create a workspace dir with base_resume.json + temp_jd.txt
+    2. Run `opencode run <prompt> --dir <ws> --model <m> --auto`
     3. Wait for completion (timeout enforced)
-    4. Read tailored.json from the workspace
-    5. Clean up workspace
+    4. Read tailored.json the agent wrote into the workspace
+    5. Clean up the workspace
+
+    Note the exact CLI surface (verified against opencode docs): the prompt is a
+    positional arg, the working dir is `--dir`, the model is `--model
+    provider/model`, and `--auto` auto-approves tool permissions so the agent can
+    write files unattended. There is no `--skill`/`--cwd` flag.
     """
 
     def __init__(self) -> None:
         self._workspace_root = Path(settings.AGENT_WORKSPACE_ROOT)
         self._workspace_root.mkdir(parents=True, exist_ok=True)
-        self._skill_dir = Path(settings.AGENT_SKILL_DIR)
         self._timeout = settings.AGENT_TIMEOUT_SECONDS
         self._command = settings.AGENT_COMMAND
+        self._model = settings.AGENT_MODEL
+        self._auto = settings.AGENT_AUTO_APPROVE
+        self._api_key = settings.OPENCODE_API_KEY
+
+    def _build_command(self, workspace: Path) -> list[str]:
+        # Flags first, prompt (variadic positional) last.
+        cmd = [self._command, "run", "--dir", str(workspace)]
+        if self._model:
+            cmd += ["--model", self._model]
+        if self._auto:
+            cmd.append("--auto")
+        cmd.append(_TAILOR_PROMPT)
+        return cmd
+
+    def _build_env(self, allow_ai_projects: bool) -> dict[str, str]:
+        env = {
+            **os.environ,
+            "ALLOW_AI_PROJECTS": "true" if allow_ai_projects else "false",
+            # Avoid interactive update prompts on a server.
+            "OPENCODE_DISABLE_AUTOUPDATE": "true",
+        }
+        if self._api_key:
+            env["OPENCODE_API_KEY"] = self._api_key
+        return env
+
+    def _parse_output(self, workspace: Path, run_id: str) -> dict:
+        tailored_path = workspace / "tailored.json"
+        if not tailored_path.exists():
+            log.error("agent_no_output", run_id=run_id)
+            raise AgentOutputInvalidError("Resume engine completed but did not produce output.")
+        try:
+            tailored = json.loads(tailored_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            log.error("agent_output_parse_error", run_id=run_id, error=str(exc)[:200])
+            raise AgentOutputInvalidError("Resume engine produced invalid output.") from exc
+        if not isinstance(tailored, dict) or "immutable" not in tailored or "editable" not in tailored:
+            raise AgentOutputInvalidError("Resume engine output is missing required keys.")
+        return tailored
 
     async def run(
         self,
@@ -134,81 +213,51 @@ class OpenCodeAgentBackend(AgentBackend):
         workspace = self._workspace_root / run_id
 
         try:
-            # Setup workspace
             workspace.mkdir(parents=True, exist_ok=True)
             (workspace / "base_resume.json").write_text(
                 json.dumps(base_resume, indent=2), encoding="utf-8"
             )
             (workspace / "temp_jd.txt").write_text(jd_text, encoding="utf-8")
 
-            # Build the agent command
-            # OpenCode's `run` command executes a skill non-interactively
-            cmd = [
-                self._command,
-                "run",
-                "--skill",
-                "resume-tailor",
-                "--cwd",
-                str(workspace),
-            ]
+            cmd = self._build_command(workspace)
+            log.info("agent_spawn", run_id=run_id, model=self._model or "default")
 
-            log.info("agent_spawn", run_id=run_id, cmd=" ".join(cmd))
-
-            # Spawn subprocess
             process = await asyncio.create_subprocess_exec(
                 *cmd,
                 cwd=str(workspace),
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                env={
-                    **os.environ,
-                    "ALLOW_AI_PROJECTS": "true" if allow_ai_projects else "false",
-                },
+                env=self._build_env(allow_ai_projects),
             )
 
             try:
-                stdout, stderr = await asyncio.wait_for(
+                _stdout, stderr = await asyncio.wait_for(
                     process.communicate(),
                     timeout=self._timeout,
                 )
-            except TimeoutError as exc:
-                # Kill the process group
+            except (TimeoutError, asyncio.TimeoutError) as exc:
                 process.kill()
                 await process.wait()
                 log.error("agent_timeout", run_id=run_id, timeout=self._timeout)
                 raise AgentTimeoutError(f"Resume engine timed out after {self._timeout}s.") from exc
 
             if process.returncode != 0:
-                stderr_text = (stderr or b"").decode()[:500]
+                stderr_text = (stderr or b"").decode(errors="replace")[:500]
                 log.error(
                     "agent_failed",
                     run_id=run_id,
                     returncode=process.returncode,
                     stderr=stderr_text,
                 )
-                raise AgentUnavailableError(f"Resume engine exited with code {process.returncode}.")
+                raise AgentUnavailableError(
+                    f"Resume engine exited with code {process.returncode}."
+                )
 
-            # Read the output
-            tailored_path = workspace / "tailored.json"
-            if not tailored_path.exists():
-                log.error("agent_no_output", run_id=run_id)
-                raise AgentOutputInvalidError("Resume engine completed but did not produce output.")
-
-            try:
-                tailored = json.loads(tailored_path.read_text(encoding="utf-8"))
-            except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-                log.error("agent_output_parse_error", run_id=run_id, error=str(exc)[:200])
-                raise AgentOutputInvalidError("Resume engine produced invalid output.") from exc
-
-            # Basic schema check
-            if "immutable" not in tailored or "editable" not in tailored:
-                raise AgentOutputInvalidError("Resume engine output is missing required keys.")
-
+            tailored = self._parse_output(workspace, run_id)
             log.info("agent_success", run_id=run_id)
             return AgentResult(tailored_json=tailored, iterations=1)
 
         finally:
-            # Always clean up the workspace
             try:
                 if workspace.exists():
                     shutil.rmtree(workspace, ignore_errors=True)
@@ -258,6 +307,41 @@ async def release_agent_lock() -> None:
         await redis.delete(settings.AGENT_LOCK_KEY)
     except Exception:  # noqa: BLE001
         log.warning("agent_lock_release_failed")
+
+
+async def check_agent() -> tuple[bool, str]:
+    """Preflight the configured agent backend.
+
+    - mock: always ready.
+    - opencode: confirms the CLI is installed and runnable (`opencode --version`).
+      Does not verify model credentials (that needs a real, billable call), but
+      catches the common "binary missing / not on PATH" failure before a job runs.
+
+    Returns (ok, detail). Safe to call from a health endpoint.
+    """
+    if settings.AGENT_BACKEND != "opencode":
+        return True, "mock"
+
+    try:
+        process = await asyncio.create_subprocess_exec(
+            settings.AGENT_COMMAND,
+            "--version",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, _ = await asyncio.wait_for(process.communicate(), timeout=10)
+    except FileNotFoundError:
+        return False, f"'{settings.AGENT_COMMAND}' not found on PATH"
+    except (TimeoutError, asyncio.TimeoutError):
+        return False, "version check timed out"
+    except Exception as exc:  # noqa: BLE001
+        return False, type(exc).__name__
+
+    if process.returncode != 0:
+        return False, f"version check exited {process.returncode}"
+    version = (stdout or b"").decode(errors="replace").strip()[:40]
+    has_key = bool(settings.OPENCODE_API_KEY)
+    return True, f"opencode {version} (api_key={'set' if has_key else 'unset'})"
 
 
 async def run_agent(

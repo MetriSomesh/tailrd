@@ -98,6 +98,15 @@ class Settings(BaseSettings):
     AGENT_WORKSPACE_ROOT: str = "./_agent_workspaces"
     AGENT_SKILL_DIR: str = "../../agent/skills"
     AGENT_TIMEOUT_SECONDS: int = 180
+    # Model for the OpenCode agent, in `provider/model` form (e.g. an OpenCode
+    # Zen model like "opencode/claude-sonnet-4"). None → OpenCode's configured
+    # default model is used. Run `opencode models` to list valid ids.
+    AGENT_MODEL: str | None = None
+    # Auto-approve tool permissions so the agent can write files unattended.
+    AGENT_AUTO_APPROVE: bool = True
+    # OpenCode Zen API key. Injected into the agent subprocess environment as
+    # OPENCODE_API_KEY. Can also be configured via `opencode auth login`.
+    OPENCODE_API_KEY: str | None = None
     AGENT_LOCK_KEY: str = "tailrd:agent:lock"
     AGENT_LOCK_TTL_SECONDS: int = 200
     AGENT_MAX_RETRIES: int = 2
@@ -207,6 +216,11 @@ class Settings(BaseSettings):
                 problems.append("RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET are required")
             if not self.RAZORPAY_WEBHOOK_SECRET:
                 problems.append("RAZORPAY_WEBHOOK_SECRET is required for webhook verification")
+
+        # The real agent needs credentials for the model gateway. In production we
+        # require the key via env; locally it may come from `opencode auth login`.
+        if self.is_production and self.AGENT_BACKEND == "opencode" and not self.OPENCODE_API_KEY:
+            problems.append("OPENCODE_API_KEY is required when AGENT_BACKEND=opencode in production")
 
         if (self.GOOGLE_CLIENT_ID is None) != (self.GOOGLE_CLIENT_SECRET is None):
             problems.append("GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set together")
