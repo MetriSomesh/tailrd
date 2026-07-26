@@ -89,7 +89,7 @@ async def _extract_via_openai(text: str) -> dict:
         "temperature": 0.1,
         "stream": False,
     }
-    async with httpx.AsyncClient(timeout=settings.AGENT_TIMEOUT_SECONDS) as client:
+    async with httpx.AsyncClient(timeout=settings.RESUME_PARSE_TIMEOUT_SECONDS) as client:
         resp = await client.post(
             f"{base}/chat/completions", json=payload, headers={"Authorization": f"Bearer {key}"}
         )
@@ -123,7 +123,16 @@ async def _extract_via_opencode(text: str) -> dict:
             stderr=asyncio.subprocess.PIPE,
             env={**_agent_env()},
         )
-        await asyncio.wait_for(proc.communicate(), timeout=settings.AGENT_TIMEOUT_SECONDS)
+        try:
+            await asyncio.wait_for(
+                proc.communicate(), timeout=settings.RESUME_PARSE_TIMEOUT_SECONDS
+            )
+        except (TimeoutError, asyncio.TimeoutError):
+            # Too slow for a synchronous upload — kill it and fall back to heuristic.
+            proc.kill()
+            with __import__("contextlib").suppress(Exception):
+                await proc.wait()
+            raise RuntimeError("opencode parse timed out")
 
         out = workspace / "parsed.json"
         if proc.returncode != 0 or not out.exists():

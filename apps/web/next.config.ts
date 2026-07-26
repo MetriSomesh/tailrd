@@ -21,6 +21,10 @@ const nextConfig: NextConfig = {
   experimental: {
     // Trim client bundles for icon/util packages added in later phases.
     optimizePackageImports: ["lucide-react"],
+    // Rewrite proxying (/api/backend/*) defaults to a 30s upstream timeout.
+    // The resume-parse call runs a real LLM (~35s on the opencode backend), so
+    // raise it well past that; the backend still caps the work itself.
+    proxyTimeout: 120_000,
   },
 
   async headers() {

@@ -112,6 +112,12 @@ class Settings(BaseSettings):
     # settable via `opencode auth login`).
     OPENCODE_API_KEY: str | None = None
 
+    # Hard cap on resume-parse LLM extraction. The frontend proxy is configured
+    # to tolerate this (experimental.proxyTimeout), so we allow the full ~35s
+    # opencode run; this only guards against a runaway/hung model, after which we
+    # fall back to the fast heuristic so the upload never hangs or 500s.
+    RESUME_PARSE_TIMEOUT_SECONDS: int = 90
+
     # ---- OpenAI-compatible agent backend (AGENT_BACKEND=openai) ----
     # Base URL of the OpenAI-compatible endpoint. Defaults to the local OpenCode
     # proxy that Hermes points at; can be Zen cloud (https://opencode.ai/zen/v1)

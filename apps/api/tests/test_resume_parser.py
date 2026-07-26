@@ -43,6 +43,24 @@ class TestHeuristicParse:
         assert r["email"] is None
         assert r["experiences"] == []
 
+    async def test_llm_failure_falls_back_to_heuristic(self, monkeypatch) -> None:
+        """If the LLM extractor errors/times out, we still return heuristic fields
+        rather than failing the upload (this is what prevents the 500)."""
+        from app.core.config import settings
+        from app.services import resume_parser
+
+        monkeypatch.setattr(settings, "AGENT_BACKEND", "opencode")
+
+        async def _boom(_text):
+            raise RuntimeError("opencode parse timed out")
+
+        monkeypatch.setattr(resume_parser, "_extract_via_opencode", _boom)
+
+        result = await resume_parser.parse_resume(RESUME_TEXT)
+        # Fell back to heuristic — contact fields still extracted, no exception.
+        assert result["email"] == "jane.dev@example.com"
+        assert result["full_name"] == "Jane Developer"
+
     async def test_sanitize_drops_malformed_items(self) -> None:
         from app.services.resume_parser import _sanitize
 
