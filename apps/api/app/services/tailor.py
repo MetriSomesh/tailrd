@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import tempfile
 
 from sqlalchemy import select
@@ -86,6 +87,90 @@ def _build_feedback(score_result: dict, target: float) -> str:
         )
 
     return "\n".join(lines)
+
+
+# Em dash, en dash, horizontal bar, and arrows — the punctuation that most makes
+# generated text read as machine-written. Stripped from the final resume.
+_DASH_CHARS = "\u2014\u2013\u2015\u2192\u27f6"
+_NUM_RANGE_RE = re.compile(r"(\d)[ \t]*[\u2013\u2014\u2015][ \t]*(\d)")
+_DASH_RE = re.compile(rf"[ \t]*[{_DASH_CHARS}][ \t]*")
+
+
+def _humanize_text(text: str) -> str:
+    """Rewrite AI-giveaway punctuation so a line reads like a person typed it.
+
+    - Number ranges keep a hyphen ("30–40%" -> "30-40%").
+    - Any other em/en dash or arrow used as punctuation becomes a comma.
+    - Smart quotes and ellipses collapse to plain ASCII.
+    Newlines are preserved (project descriptions rely on them).
+    """
+    if not isinstance(text, str) or not text:
+        return text
+
+    text = _NUM_RANGE_RE.sub(r"\1-\2", text)
+    text = _DASH_RE.sub(", ", text)
+    text = (
+        text.replace("\u2019", "'")
+        .replace("\u2018", "'")
+        .replace("\u201c", '"')
+        .replace("\u201d", '"')
+        .replace("\u2026", "...")
+    )
+    # Tidy artefacts left by the comma substitution.
+    text = re.sub(r"[ \t]+,", ",", text)
+    text = re.sub(r",[ \t]*,", ", ", text)
+    text = re.sub(r",[ \t]*([.;:!?])", r"\1", text)
+    text = re.sub(r"(?m)^[ \t]*,[ \t]*", "", text)
+    text = re.sub(r"(?m),[ \t]*$", "", text)
+    text = re.sub(r"[ \t]{2,}", " ", text)
+    return text.strip()
+
+
+def _humanize_tailored(tailored: dict) -> dict:
+    """Apply _humanize_text to the editable prose fields, in place.
+
+    Skips immutable identity/education and each role's company/dates/location so
+    factual anchors and date ranges stay exactly as given.
+    """
+    editable = tailored.get("editable")
+    if not isinstance(editable, dict):
+        return tailored
+
+    if isinstance(editable.get("about"), str):
+        editable["about"] = _humanize_text(editable["about"])
+
+    skills = editable.get("skills")
+    if isinstance(skills, dict):
+        editable["skills"] = {
+            _humanize_text(cat): (
+                [_humanize_text(i) for i in items] if isinstance(items, list) else items
+            )
+            for cat, items in skills.items()
+        }
+    elif isinstance(skills, list):
+        editable["skills"] = [_humanize_text(s) for s in skills]
+
+    for exp in editable.get("experience", []) or []:
+        if not isinstance(exp, dict):
+            continue
+        if isinstance(exp.get("title"), str):
+            exp["title"] = _humanize_text(exp["title"])
+        if isinstance(exp.get("bullets"), list):
+            exp["bullets"] = [_humanize_text(b) for b in exp["bullets"]]
+
+    for proj in editable.get("projects", []) or []:
+        if not isinstance(proj, dict):
+            continue
+        if isinstance(proj.get("title"), str):
+            proj["title"] = _humanize_text(proj["title"])
+        if isinstance(proj.get("description"), str):
+            proj["description"] = "\n".join(
+                _humanize_text(line) for line in proj["description"].split("\n")
+            )
+        if isinstance(proj.get("technologies"), list):
+            proj["technologies"] = [_humanize_text(t) for t in proj["technologies"]]
+
+    return tailored
 
 
 async def execute_tailor_job(db: AsyncSession, run_id: str) -> None:
@@ -213,7 +298,10 @@ async def execute_tailor_job(db: AsyncSession, run_id: str) -> None:
 
             feedback = _build_feedback(candidate_score, target)
 
-        tailored = best_tailored
+        # Strip AI-giveaway punctuation (em dashes, smart quotes) so the final
+        # resume reads like a person wrote it. Scoring already ran on the words,
+        # which this doesn't change.
+        tailored = _humanize_tailored(best_tailored)
         score_result = best_score_result
         run.iterations = attempts
 

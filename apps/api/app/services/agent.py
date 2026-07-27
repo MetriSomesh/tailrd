@@ -171,8 +171,18 @@ tools and measurable impact. Keep the roles most relevant to this JD.
 separated by newlines, naming the JD-relevant tech and the outcome.
 
 If the environment variable ALLOW_AI_PROJECTS is "false", do NOT invent entirely \
-new projects — only rewrite the candidate's existing ones (their descriptions and \
+new projects, only rewrite the candidate's existing ones (their descriptions and \
 technologies may still be rewritten). If "true", you may add new relevant projects.
+
+STYLE — it must read like a person wrote it, not an AI, and pass a human \
+recruiter's eye:
+- NEVER use em dashes or en dashes (the "—" or "–" characters). Use commas, \
+periods, or "and" instead.
+- Avoid AI-tell words and filler: leverage, utilise, spearhead, delve, seamless, \
+robust, cutting-edge, synergy, showcase, underscore, meticulous, "passionate \
+about", "fast-paced", "in today's world". Write plainly.
+- Use direct, specific language with concrete tools and results. Vary sentence \
+length. No rows of buzzwords.
 
 Keep the two-key structure and all field names exactly so downstream tooling can \
 render it.
@@ -358,8 +368,17 @@ foreground the JD's responsibilities, tools and measurable impact. Keep the most
 relevant roles.
 - editable.projects: 3-5 entries; each description is 2-3 achievement lines \
 separated by newlines, naming the JD-relevant tech and the outcome. If \
-ALLOW_AI_PROJECTS is false, do not invent entirely new projects — only rewrite \
+ALLOW_AI_PROJECTS is false, do not invent entirely new projects, only rewrite \
 existing ones; if true, you may add new relevant projects.
+
+STYLE — it must read like a person wrote it, not an AI, and pass a human \
+recruiter's eye:
+- NEVER use em dashes or en dashes (the "—" or "–" characters). Use commas, \
+periods, or "and" instead.
+- Avoid AI-tell words and filler: leverage, utilise, spearhead, delve, seamless, \
+robust, cutting-edge, synergy, showcase, underscore, meticulous, "passionate \
+about", "fast-paced". Write plainly, with concrete tools and results, and vary \
+sentence length.
 """
 
 
