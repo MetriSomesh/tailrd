@@ -112,6 +112,10 @@ class Settings(BaseSettings):
     # settable via `opencode auth login`).
     OPENCODE_API_KEY: str | None = None
 
+    # Headless-browser scraping of the job-posting URL. Runs inside the worker
+    # job (async), so it can take a while; capped here.
+    JD_SCRAPE_TIMEOUT_SECONDS: int = 45
+
     # Hard cap on resume-parse LLM extraction. The frontend proxy is configured
     # to tolerate this (experimental.proxyTimeout), so we allow the full ~35s
     # opencode run; this only guards against a runaway/hung model, after which we

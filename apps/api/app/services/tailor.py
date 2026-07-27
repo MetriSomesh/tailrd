@@ -52,6 +52,20 @@ async def execute_tailor_job(db: AsyncSession, run_id: str) -> None:
     await db.commit()
 
     try:
+        # 0. Resolve the JD text. The primary input is a posting URL, which we
+        #    scrape here (headless browser) into plain text.
+        jd_text = (run.jd_text or "").strip()
+        if run.jd_url and len(jd_text) < 120:
+            from app.services.jd_scraper import scrape_jd
+
+            jd_text = await scrape_jd(run.jd_url)
+            run.jd_text = jd_text
+            if not run.jd_label:
+                first_line = jd_text.split("\n", 1)[0][:100].strip()
+                run.jd_label = first_line or None
+            await db.commit()
+            log.info("tailor_job_jd_scraped", run_id=run_id, chars=len(jd_text))
+
         # 1. Build base resume from user profile
         from app.services.profile import build_base_resume_json
 
@@ -67,7 +81,7 @@ async def execute_tailor_job(db: AsyncSession, run_id: str) -> None:
         # 3. Run the agent
         agent_result = await run_agent(
             base_resume=base_resume,
-            jd_text=run.jd_text,
+            jd_text=jd_text,
             allow_ai_projects=allow_ai_projects,
         )
 
@@ -78,7 +92,7 @@ async def execute_tailor_job(db: AsyncSession, run_id: str) -> None:
         docx_bytes = _generate_docx_bytes(tailored)
 
         # 5. Score the result
-        score_result = _score_tailored(tailored, run.jd_text)
+        score_result = _score_tailored(tailored, jd_text)
 
         # 6. Upload DOCX to storage
         storage = get_storage()

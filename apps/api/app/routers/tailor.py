@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import json
+import re
 
 from fastapi import APIRouter, Depends, Response
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,11 +31,27 @@ router = APIRouter(tags=["tailor"])
 # ---------------------------------------------------------------------------
 
 
+_URL_RE = re.compile(r"^https?://", re.IGNORECASE)
+
+
 class TailorRequest(BaseModel):
-    jd_text: str = Field(min_length=50, max_length=15000)
+    """A tailoring request. The primary input is the job-posting URL, which the
+    worker scrapes into text. Raw jd_text is still accepted as a fallback."""
+
     jd_url: str | None = Field(default=None, max_length=2048)
+    jd_text: str | None = Field(default=None, max_length=15000)
     company: str | None = Field(default=None, max_length=200)
     role: str | None = Field(default=None, max_length=200)
+
+    @model_validator(mode="after")
+    def _require_a_source(self) -> "TailorRequest":
+        has_url = bool(self.jd_url and _URL_RE.match(self.jd_url.strip()))
+        has_text = bool(self.jd_text and len(self.jd_text.strip()) >= 50)
+        if not has_url and not has_text:
+            raise ValueError(
+                "Provide the job posting URL (starting with http:// or https://)."
+            )
+        return self
 
 
 class RunSummary(BaseModel):
@@ -96,14 +113,16 @@ async def submit_tailor_job(
     # created if this raises.
     entitlement_source = await check_and_consume_entitlement(db, user.id)
 
-    # Create the run
+    # Create the run. When only a URL is given, jd_text starts empty and the
+    # worker fills it by scraping the posting (jd_text column is NOT NULL).
+    jd_text = body.jd_text or ""
     run = TailorRun(
         id=new_uuid(),
         user_id=user.id,
         status="queued",
-        jd_text=body.jd_text,
-        jd_url=body.jd_url,
-        jd_label=_extract_label(body.jd_text),
+        jd_text=jd_text,
+        jd_url=(body.jd_url.strip() if body.jd_url else None),
+        jd_label=_extract_label(jd_text) if jd_text.strip() else None,
         company=body.company,
         role=body.role,
         entitlement_consumed=True,

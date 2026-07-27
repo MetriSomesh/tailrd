@@ -42,3 +42,6 @@ sentry-sdk[fastapi]==2.66.1
 # --- Utilities ---
 tenacity==9.1.4
 slowapi==0.1.10
+
+# --- JD scraping (headless browser rendering of job postings) ---
+playwright==1.56.0

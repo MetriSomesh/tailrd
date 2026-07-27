@@ -168,6 +168,14 @@ class OnboardingIncompleteError(AppError):
     title = "Profile Incomplete"
 
 
+class JDScrapeError(AppError):
+    """Could not fetch/extract the job description from the provided URL."""
+
+    status_code = 422
+    code = "jd_scrape_failed"
+    title = "Couldn't Read Job Posting"
+
+
 # ---------------------------------------------------------------------------
 # 5xx — server / dependency errors
 # ---------------------------------------------------------------------------
@@ -249,5 +257,7 @@ REFUNDABLE_ERROR_CODES: frozenset[str] = frozenset(
         "storage_unavailable",
         "queue_unavailable",
         "database_unavailable",
+        # No tailoring happens if we can't read the posting, so refund the unit.
+        "jd_scrape_failed",
     }
 )

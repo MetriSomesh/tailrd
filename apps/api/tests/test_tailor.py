@@ -328,3 +328,51 @@ class TestWorkerExecution:
         assert r.status_code == 200
         assert "application/vnd.openxmlformats" in r.headers["content-type"]
         assert len(r.content) > 1000  # A real DOCX is at least a few KB
+
+    async def test_url_only_submit_scrapes_then_tailors(
+        self, client: AsyncClient, monkeypatch
+    ) -> None:
+        """Primary flow: submit a posting URL (no text); the worker scrapes it,
+        fills jd_text, and tailors against that."""
+        await _create_complete_user(client)
+        csrf = client.cookies.get("tailrd_csrf")
+
+        scraped = (
+            "AI Engineer — TestCorp\n\nBuild LLM agents, retrieval pipelines and "
+            "backend APIs. Python, FastAPI, evaluation and observability required."
+        )
+
+        from app.services import jd_scraper
+
+        async def _fake_scrape(url: str) -> str:
+            assert url == "https://jobs.testcorp.com/ai-engineer"
+            return scraped
+
+        monkeypatch.setattr(jd_scraper, "scrape_jd", _fake_scrape)
+
+        submit_r = await client.post(
+            "/api/v1/tailor",
+            json={"jd_url": "https://jobs.testcorp.com/ai-engineer"},
+            headers={"X-CSRF-Token": csrf},
+        )
+        assert submit_r.status_code == 202
+        run_id = submit_r.json()["run_id"]
+
+        from app.workers.runner import _tick
+
+        await _tick()
+
+        detail = (await client.get(f"/api/v1/runs/{run_id}")).json()
+        assert detail["status"] == "succeeded"
+        assert detail["jd_text"] == scraped  # scraped text was persisted
+        assert detail["overall_score"] is not None
+
+    async def test_submit_without_url_or_text_is_rejected(self, client: AsyncClient) -> None:
+        await _create_complete_user(client)
+        csrf = client.cookies.get("tailrd_csrf")
+        r = await client.post(
+            "/api/v1/tailor",
+            json={"company": "NoSource"},
+            headers={"X-CSRF-Token": csrf},
+        )
+        assert r.status_code == 422

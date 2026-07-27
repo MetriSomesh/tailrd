@@ -176,7 +176,8 @@ export const listRuns = () => api<RunSummary[]>("/runs");
 export const getRun = (id: string) => api<RunDetail>(`/runs/${id}`);
 
 export const submitTailor = (body: {
-  jd_text: string;
+  jd_url?: string;
+  jd_text?: string;
   company?: string;
   role?: string;
 }) => api<TailorResponse>("/tailor", { json: body });
