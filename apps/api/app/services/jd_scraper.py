@@ -1,12 +1,15 @@
-"""Scrape a job-posting URL into plain job-description text.
+"""Scrape a job-posting URL into plain job-description text — lightweight, no browser.
 
-Uses a headless Chromium (Playwright) so JavaScript-rendered postings (Greenhouse,
-Lever, Workday, custom SPAs) work, not just static HTML. Extraction prefers the
-schema.org JobPosting JSON-LD `description` (clean, structured), and falls back to
-the main content's visible text.
+Fetches the page over HTTP (httpx) and extracts the description from schema.org
+JobPosting JSON-LD, which most ATS/job boards (Greenhouse, Lever, Workable, Ashby,
+LinkedIn, Indeed, ...) embed in the served HTML for Google for Jobs. Falls back to
+the page's readable main-content text.
 
-The pure text-processing helpers are separated from the browser orchestration so
-they can be unit-tested without launching a browser.
+No headless browser, so the memory/disk footprint is negligible. The tradeoff:
+pure client-rendered SPAs that ship no JSON-LD and no server HTML can't be read —
+those fail with a clear message so the user can paste a different link.
+
+The pure text helpers are separated from the fetch so they can be unit-tested.
 """
 
 from __future__ import annotations
@@ -25,9 +28,18 @@ log = get_logger(__name__)
 
 MAX_JD_CHARS = 15000
 MIN_JD_CHARS = 120
+MAX_HTML_BYTES = 4_000_000  # don't parse absurdly large pages
 
 _TAG_RE = re.compile(r"<[^>]+>")
 _SCRIPT_STYLE_RE = re.compile(r"(?is)<(script|style|noscript)[^>]*>.*?</\1>")
+# Boilerplate regions to drop before reading visible text.
+_BOILERPLATE_RE = re.compile(
+    r"(?is)<(script|style|noscript|svg|nav|header|footer|aside|form)\b[^>]*>.*?</\1>"
+)
+_MAIN_RE = re.compile(r"(?is)<(main|article)\b[^>]*>(.*?)</\1>")
+_LD_JSON_RE = re.compile(
+    r'(?is)<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>'
+)
 _INLINE_WS_RE = re.compile(r"[ \t\u00a0]+")
 _MULTI_NL_RE = re.compile(r"\n{3,}")
 _URL_RE = re.compile(r"^https?://", re.IGNORECASE)
@@ -44,15 +56,19 @@ def _clean_text(text: str) -> str:
 
 
 def _strip_html(fragment: str) -> str:
-    """Turn an HTML fragment (e.g. a JSON-LD description) into readable text."""
+    """Turn an HTML fragment into readable text, preserving block breaks."""
     if not fragment:
         return ""
     without_scripts = _SCRIPT_STYLE_RE.sub(" ", fragment)
-    # Preserve block breaks so bullet lists don't run together.
-    with_breaks = re.sub(r"(?i)</(p|div|li|h[1-6]|br)\s*>", "\n", without_scripts)
+    with_breaks = re.sub(r"(?i)</(p|div|li|h[1-6]|tr|section)\s*>", "\n", without_scripts)
     with_breaks = re.sub(r"(?i)<br\s*/?>", "\n", with_breaks)
     text = _TAG_RE.sub(" ", with_breaks)
     return _clean_text(html_lib.unescape(text))
+
+
+def _find_ld_json_blocks(html: str) -> list[str]:
+    """Extract the raw contents of every <script type=application/ld+json> tag."""
+    return [m.group(1).strip() for m in _LD_JSON_RE.finditer(html) if m.group(1).strip()]
 
 
 def _iter_ld_nodes(data: Any) -> Iterator[dict]:
@@ -98,80 +114,75 @@ def extract_jobposting_from_ld(ld_blocks: list[str]) -> str | None:
     return None
 
 
-async def scrape_jd(url: str) -> str:
-    """Render the posting at `url` and return its job-description text.
+def extract_main_text(html: str) -> str:
+    """Best-effort readable text: drop boilerplate, prefer <main>/<article>."""
+    stripped = _BOILERPLATE_RE.sub(" ", html)
+    match = _MAIN_RE.search(stripped)
+    region = match.group(2) if match else stripped
+    text = _strip_html(region)
+    # If <main>/<article> was tiny (e.g. a shell), fall back to the whole page.
+    if len(text) < MIN_JD_CHARS and match:
+        text = _strip_html(stripped)
+    return text
 
-    Raises JDScrapeError (refundable) if the page can't be read or yields too
+
+async def scrape_jd(url: str) -> str:
+    """Fetch the posting at `url` and return its job-description text.
+
+    Raises JDScrapeError (refundable) if the page can't be fetched or yields too
     little text to be a real posting.
     """
     if not isinstance(url, str) or not _URL_RE.match(url.strip()):
         raise JDScrapeError("The job posting link must start with http:// or https://.")
     url = url.strip()
 
-    from playwright.async_api import async_playwright
+    import httpx
 
-    timeout_ms = settings.JD_SCRAPE_TIMEOUT_SECONDS * 1000
-
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/141.0 Safari/537.36"
+        ),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+    }
     try:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(
-                headless=True,
-                args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
-            )
-            try:
-                context = await browser.new_context(
-                    user_agent=(
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                        "(KHTML, like Gecko) Chrome/141.0 Safari/537.36"
-                    ),
-                    viewport={"width": 1280, "height": 1600},
-                )
-                page = await context.new_page()
-                await page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
-                # Give SPAs a moment to render the posting.
-                try:
-                    await page.wait_for_load_state("networkidle", timeout=8000)
-                except Exception:  # noqa: BLE001 - networkidle is best-effort
-                    pass
-                await page.wait_for_timeout(800)
-
-                # 1. Prefer structured JSON-LD JobPosting.
-                ld_blocks = await page.eval_on_selector_all(
-                    'script[type="application/ld+json"]',
-                    "els => els.map(e => e.textContent)",
-                )
-                structured = extract_jobposting_from_ld([b for b in ld_blocks if b])
-                if structured and len(structured) >= MIN_JD_CHARS:
-                    log.info("jd_scrape_ok", url=url[:120], source="json-ld", chars=len(structured))
-                    return structured
-
-                # 2. Fallback: visible text of the main content region.
-                text = ""
-                for selector in ("main", "article", "[role=main]", "#content", "body"):
-                    try:
-                        el = await page.query_selector(selector)
-                        if el:
-                            candidate = _clean_text(await el.inner_text())
-                            if len(candidate) > len(text):
-                                text = candidate
-                            if len(text) >= MIN_JD_CHARS and selector != "body":
-                                break
-                    except Exception:  # noqa: BLE001
-                        continue
-
-                if len(text) < MIN_JD_CHARS:
-                    raise JDScrapeError(
-                        "We couldn't read the job description from that page. "
-                        "Check the link opens the posting directly."
-                    )
-                log.info("jd_scrape_ok", url=url[:120], source="text", chars=len(text))
-                return text
-            finally:
-                await browser.close()
-    except JDScrapeError:
-        raise
-    except Exception as exc:  # noqa: BLE001 - normalise all browser errors
-        log.warning("jd_scrape_failed", url=url[:120], error=type(exc).__name__, detail=str(exc)[:200])
+        async with httpx.AsyncClient(
+            follow_redirects=True,
+            timeout=settings.JD_SCRAPE_TIMEOUT_SECONDS,
+            headers=headers,
+        ) as client:
+            resp = await client.get(url)
+    except httpx.HTTPError as exc:
+        log.warning("jd_scrape_fetch_error", url=url[:120], error=type(exc).__name__)
         raise JDScrapeError(
             "We couldn't open that job posting link. Check the URL and try again."
         ) from exc
+
+    if resp.status_code >= 400:
+        log.warning("jd_scrape_http_status", url=url[:120], status=resp.status_code)
+        raise JDScrapeError(
+            f"That link returned an error ({resp.status_code}). Check it opens the posting."
+        )
+
+    content_type = resp.headers.get("content-type", "")
+    if content_type and "html" not in content_type and "text" not in content_type:
+        raise JDScrapeError("That link isn't a web page we can read. Paste the posting's page URL.")
+
+    html = resp.text[:MAX_HTML_BYTES]
+
+    # 1. Prefer structured JSON-LD JobPosting.
+    structured = extract_jobposting_from_ld(_find_ld_json_blocks(html))
+    if structured and len(structured) >= MIN_JD_CHARS:
+        log.info("jd_scrape_ok", url=url[:120], source="json-ld", chars=len(structured))
+        return structured
+
+    # 2. Fallback: readable main-content text.
+    text = extract_main_text(html)
+    if len(text) < MIN_JD_CHARS:
+        raise JDScrapeError(
+            "We couldn't read the job description from that page. It may load its content "
+            "with JavaScript — try a direct link to the posting, or a job-board listing."
+        )
+    log.info("jd_scrape_ok", url=url[:120], source="text", chars=len(text))
+    return text
