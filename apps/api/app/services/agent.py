@@ -145,27 +145,37 @@ directory. Do not ask questions.
 2. Produce a tailored resume and WRITE it to `tailored.json` in the current \
 directory as valid JSON. Write nothing else and print nothing else.
 
+Your objective: maximise how well this resume matches the job description so it \
+scores as highly as possible on ATS keyword, skills and responsibility checks.
+
 The output JSON MUST have exactly two top-level keys: "immutable" and "editable".
 
-IMMUTABLE — copy through unchanged from base_resume.json:
-- immutable.name, immutable.contact, immutable.education
-- for each experience: its title, company, location and dates
+IMMUTABLE — copy through EXACTLY from base_resume.json, never alter:
+- immutable.name
+- immutable.contact
+- immutable.education (every degree, institution and date)
 
-EDITABLE — rewrite to match the job description:
-- editable.about: 2-3 punchy sentences. Start with the candidate's existing hook \
-line if present, then weave in the skills and terms the JD emphasises. No generic \
-filler ("team player", "hard working", "passionate").
+EDITABLE — rewrite aggressively to match the job description:
+- editable.about: 2-4 sentences positioning the candidate for THIS role, leading \
+with the skills, tools and domain the JD emphasises. No generic filler.
 - editable.skills: an object mapping category names to arrays, e.g. \
-{"Languages": ["Python"], "Frameworks": ["FastAPI"]}. Order categories by JD \
-relevance. Only include skills the candidate plausibly has from base_resume.json.
-- editable.experience: keep only the 2 most relevant roles for this JD. Each \
-bullet must carry a concrete, defensible impact (scope, numbers or outcome). Never \
-invent precise metrics you could not justify in an interview.
-- editable.projects: 3-4 entries. Each description is 2-3 achievement lines \
-separated by newlines, naming the tech used and the impact.
+{"Languages": ["Python"], "Cloud": ["AWS"]}. Reorganise and EXPAND this to cover \
+the skills, tools, frameworks and concepts the job description asks for, so the \
+resume reflects the target stack. Order categories by JD relevance.
+- editable.experience: one object per role. For each role you MUST keep "company" \
+exactly as in base_resume (real employers are factual), and keep "dates" and \
+"location" as given. You MAY rewrite the "title" to align with the target role, \
+and you SHOULD rewrite every bullet to foreground the JD's responsibilities, \
+tools and measurable impact. Keep the roles most relevant to this JD.
+- editable.projects: 3-5 entries. Each description is 2-3 achievement lines \
+separated by newlines, naming the JD-relevant tech and the outcome.
 
-If the environment variable ALLOW_AI_PROJECTS is "false", do NOT invent new \
-projects — only rewrite the candidate's existing ones.
+If the environment variable ALLOW_AI_PROJECTS is "false", do NOT invent entirely \
+new projects — only rewrite the candidate's existing ones (their descriptions and \
+technologies may still be rewritten). If "true", you may add new relevant projects.
+
+Keep the two-key structure and all field names exactly so downstream tooling can \
+render it.
 """
 
 # Short, shell-safe prompt passed as the CLI arg. The detailed rules go into
@@ -322,28 +332,34 @@ class OpenCodeAgentBackend(AgentBackend):
 # writing a file.
 _TAILOR_SYSTEM_PROMPT = """\
 You are an ATS resume-tailoring engine. Given a candidate's base resume and a \
-target job description, rewrite the editable sections to match the job.
+target job description, rewrite the editable sections to match the job as closely \
+as possible so the resume scores highly on ATS keyword, skills and responsibility \
+checks.
 
 Respond with ONLY a JSON object — no markdown, no code fences, no commentary. \
 The object MUST have exactly two top-level keys: "immutable" and "editable".
 
-IMMUTABLE — copy through unchanged from the input base resume:
-- immutable.name, immutable.contact, immutable.education
-- for each experience: its title, company, location and dates
+IMMUTABLE — copy through EXACTLY from the input base resume, never alter:
+- immutable.name
+- immutable.contact
+- immutable.education (every degree, institution and date)
 
-EDITABLE — rewrite to match the job description:
-- editable.about: 2-3 punchy sentences. Start with the candidate's existing hook \
-line if present, then weave in the skills and terms the JD emphasises. No generic \
-filler.
+EDITABLE — rewrite aggressively to match the job description:
+- editable.about: 2-4 sentences positioning the candidate for THIS role, leading \
+with the skills, tools and domain the JD emphasises. No generic filler.
 - editable.skills: an object mapping category names to arrays (e.g. \
-{"Languages": ["Python"]}), ordered by JD relevance. Only skills the candidate \
-plausibly has.
-- editable.experience: keep only the 2 most relevant roles. Each bullet carries a \
-concrete, defensible impact (scope, numbers or outcome). Never invent precise \
-metrics you could not justify in an interview.
-- editable.projects: 3-4 entries; each description is 2-3 achievement lines \
-separated by newlines, naming the tech used and the impact. If ALLOW_AI_PROJECTS \
-is false, do not invent new projects — only rewrite existing ones.
+{"Languages": ["Python"], "Cloud": ["AWS"]}), ordered by JD relevance. Reorganise \
+and EXPAND to cover the skills, tools, frameworks and concepts the JD asks for so \
+the resume reflects the target stack.
+- editable.experience: one object per role. Keep "company" exactly as given (real \
+employers are factual) and keep "dates" and "location" as given. You MAY rewrite \
+the "title" to align with the target role, and you SHOULD rewrite every bullet to \
+foreground the JD's responsibilities, tools and measurable impact. Keep the most \
+relevant roles.
+- editable.projects: 3-5 entries; each description is 2-3 achievement lines \
+separated by newlines, naming the JD-relevant tech and the outcome. If \
+ALLOW_AI_PROJECTS is false, do not invent entirely new projects — only rewrite \
+existing ones; if true, you may add new relevant projects.
 """
 
 

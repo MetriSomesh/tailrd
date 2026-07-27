@@ -57,22 +57,23 @@ def _build_feedback(score_result: dict, target: float) -> str:
     """
     overall = score_result.get("overall_score", 0.0)
     lines = [
-        f"The last draft scored {overall}/100 (target {target:g}). Raise the match "
-        "without inventing anything the candidate can't defend in an interview."
+        f"The last draft scored {overall}/100 (target {target:g}). Push the match "
+        "higher by covering the gaps below. You may edit everything except the "
+        "candidate's name, contact, education, and each role's employer (company)."
     ]
 
     skills_missing = score_result.get("skills_missing") or []
     if skills_missing:
         lines.append(
-            "- Skills the job asks for that are absent — add ONLY those the "
-            "candidate genuinely has (check base_resume); never fabricate: "
-            f"{', '.join(skills_missing[:12])}."
+            "- Skills the job asks for that are missing — add them to the skills "
+            "section and reflect them in experience/projects so the resume covers "
+            f"the target stack: {', '.join(skills_missing[:12])}."
         )
 
     missing_keywords = score_result.get("missing_keywords") or []
     if missing_keywords:
         lines.append(
-            "- Relevant terms to weave in naturally where truthful: "
+            "- Relevant terms to weave into the summary, skills and bullets: "
             f"{', '.join(missing_keywords[:15])}."
         )
 
@@ -80,8 +81,8 @@ def _build_feedback(score_result: dict, target: float) -> str:
     if uncovered:
         joined = "; ".join(u[:120] for u in uncovered[:6])
         lines.append(
-            "- Job responsibilities not yet reflected — rework experience bullets "
-            f"and project descriptions to show real, relevant work on these: {joined}."
+            "- Job responsibilities not yet reflected — rewrite experience bullets "
+            f"and project descriptions to demonstrate these: {joined}."
         )
 
     return "\n".join(lines)
