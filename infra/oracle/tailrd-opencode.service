@@ -1,0 +1,39 @@
+# systemd unit: OpenCode headless server (the LLM provider for tailoring).
+# Install: sudo cp infra/oracle/tailrd-opencode.service /etc/systemd/system/tailrd-opencode.service
+# Enable:  sudo systemctl enable --now tailrd-opencode
+#
+# Prerequisite (one-time, as the tailrd user): authenticate OpenCode so `serve`
+# can reuse the stored free-tier credentials:
+#     sudo -u tailrd -i
+#     opencode auth login     # pick the free Zen provider
+#
+# Binds to 127.0.0.1 only. No auth flag exists in this OpenCode version; leaving
+# OPENCODE_SERVER_PASSWORD unset runs it without auth, which is safe because the
+# port is loopback-only and never exposed by Caddy.
+
+[Unit]
+Description=OpenCode headless server (LLM provider)
+After=network.target
+
+[Service]
+Type=simple
+User=tailrd
+Group=tailrd
+WorkingDirectory=/opt/tailrd
+Environment=HOME=/opt/tailrd
+Environment=PATH=/usr/local/bin:/usr/bin:/bin:/opt/tailrd/.npm-global/bin
+# Node/npm-installed opencode CLI. Adjust if installed elsewhere.
+ExecStart=/opt/tailrd/.npm-global/bin/opencode serve --port 9875 --hostname 127.0.0.1
+
+# Modest footprint; the model runs remotely via OpenCode's provider.
+MemoryMax=1G
+
+NoNewPrivileges=true
+ProtectSystem=full
+PrivateTmp=true
+
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

@@ -146,7 +146,7 @@ class Settings(BaseSettings):
 
     # ---- Tailoring pipeline ----
     TARGET_SCORE: float = 70.0
-    MAX_ITERATIONS: int = 3
+    MAX_ITERATIONS: int = 5
 
     # ---- Quota / entitlements ----
     FREE_RESUMES_PER_MONTH: int = 3

@@ -1,14 +1,21 @@
 # Deploying Tailrd on Oracle Cloud "Always Free"
 
-A $0/month, always-on deployment: Oracle Arm A1 VM (API + worker + Redis + optional
-headless-browser scrape) → Neon (Postgres) → Cloudflare R2 (files) → OpenCode Zen
-(free LLM). Frontend stays on Vercel.
+A $0/month, always-on deployment: Oracle Arm A1 VM (API + worker + Redis +
+zen_proxy + `opencode serve` + optional headless-browser scrape) → Neon
+(Postgres) → Cloudflare R2 (files) → OpenCode (free LLM, local proxy).
+Frontend stays on Vercel.
+
+The LLM path is entirely local and free: the API (`AGENT_BACKEND=openai`) calls
+`zen_proxy` on `127.0.0.1:9876`, which bridges to `opencode serve` on `:9875`,
+which uses OpenCode's built-in `deepseek-v4-flash-free` via stored credentials —
+no external API key.
 
 ## 0. Free services to create first
 - **Oracle Cloud** account (credit card required for signup; Always Free is never charged).
 - **Neon** — a Postgres project → copy the `psycopg` connection string.
 - **Cloudflare R2** — a bucket + an S3 API token (Access Key ID / Secret) + your account's R2 endpoint.
-- **OpenCode Zen** key — https://opencode.ai/auth (free models cost $0).
+- **OpenCode CLI** — installed on the VM and logged in once (`opencode auth login`, pick the
+  free Zen provider). No API key needs to live in `.env`.
 - (Optional) **Resend** (email) and **Razorpay** (payments) for full production.
 
 ## 1. Launch the VM
@@ -56,6 +63,28 @@ Note: the systemd unit runs uvicorn from `WorkingDirectory=/opt/tailrd/api`. Ens
 API code is reachable there (e.g. symlink `sudo -u tailrd ln -s /opt/tailrd/apps/api /opt/tailrd/api`
 if you cloned the monorepo), or adjust the unit's paths to `/opt/tailrd/apps/api`.
 
+## 5b. LLM stack: OpenCode CLI + zen_proxy (local, free, no API key)
+```bash
+# Install the OpenCode CLI for the tailrd user (npm global into ~/.npm-global).
+sudo -u tailrd -i bash -c '
+  npm config set prefix /opt/tailrd/.npm-global
+  npm install -g opencode-ai
+  /opt/tailrd/.npm-global/bin/opencode auth login    # pick the free Zen provider
+'
+
+# Install + start the two LLM units (opencode serve, then the OpenAI bridge).
+sudo cp /opt/tailrd/infra/oracle/tailrd-opencode.service /etc/systemd/system/
+sudo cp /opt/tailrd/infra/oracle/tailrd-zenproxy.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now tailrd-opencode tailrd-zenproxy
+
+# Verify the bridge answers (loopback only):
+curl -s http://127.0.0.1:9876/v1/models        # expect the model list
+```
+Both ports (9875, 9876) bind to `127.0.0.1` only and are never exposed by Caddy.
+`opencode serve` runs without auth because it's loopback-only; set
+`OPENCODE_SERVER_PASSWORD` on both units to force Basic auth if you want defence in depth.
+
 ## 6. Migrate the database (Postgres/Neon uses Alembic)
 ```bash
 cd /opt/tailrd/apps/api && sudo -u tailrd $VENV/bin/alembic upgrade head
@@ -66,6 +95,7 @@ cd /opt/tailrd/apps/api && sudo -u tailrd $VENV/bin/alembic upgrade head
 sudo nano /etc/caddy/Caddyfile     # replace YOUR_DOMAIN with api.yourdomain.com (copy infra/Caddyfile)
 sudo cp /opt/tailrd/infra/Caddyfile /etc/caddy/Caddyfile   # then edit the domain
 sudo systemctl enable --now tailrd-api caddy
+# /ready should show agent: "openai endpoint up (http://127.0.0.1:9876/v1, ...)"
 curl -s http://127.0.0.1:8000/ready    # expect {"status":"ready",...}
 ```
 Point your DNS `A` record for `api.yourdomain.com` at the VM's public IP; Caddy auto-issues TLS.
@@ -76,6 +106,8 @@ cd /opt/tailrd && sudo -u tailrd git pull --ff-only
 sudo -u tailrd $VENV/bin/pip install -r apps/api/requirements.txt
 cd apps/api && sudo -u tailrd $VENV/bin/alembic upgrade head
 sudo systemctl restart tailrd-api && curl -s http://127.0.0.1:8000/ready
+# If zen_proxy.py changed: sudo systemctl restart tailrd-zenproxy
+# If the LLM is unreachable: sudo systemctl status tailrd-opencode tailrd-zenproxy
 ```
 
 ## Notes

@@ -4,8 +4,8 @@
 
 [Unit]
 Description=Tailrd API (FastAPI + worker)
-After=network.target redis-server.service
-Wants=redis-server.service
+After=network.target redis-server.service tailrd-zenproxy.service
+Wants=redis-server.service tailrd-zenproxy.service
 
 [Service]
 Type=simple

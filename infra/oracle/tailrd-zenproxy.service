@@ -1,0 +1,42 @@
+# systemd unit: zen_proxy — OpenAI-compatible bridge to OpenCode's session API.
+# Install: sudo cp infra/oracle/tailrd-zenproxy.service /etc/systemd/system/tailrd-zenproxy.service
+# Enable:  sudo systemctl enable --now tailrd-zenproxy
+#
+# Exposes http://127.0.0.1:9876/v1 (chat/completions + models), which the Tailrd
+# API talks to when AGENT_BACKEND=openai. Bridge-only mode: `opencode serve` is
+# supervised by its own unit (tailrd-opencode.service), so each restarts alone.
+# Loopback-only; never exposed by Caddy.
+
+[Unit]
+Description=Tailrd zen_proxy (OpenAI bridge to OpenCode)
+After=network.target tailrd-opencode.service
+Requires=tailrd-opencode.service
+
+[Service]
+Type=simple
+User=tailrd
+Group=tailrd
+WorkingDirectory=/opt/tailrd/api
+Environment=PATH=/opt/tailrd/api/.venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=HOME=/opt/tailrd
+# Bridge to the separately-supervised opencode serve rather than spawning one.
+Environment=ZEN_PROXY_MANAGE_SERVE=false
+Environment=OPENCODE_SERVE_PORT=9875
+Environment=ZEN_PROXY_PORT=9876
+Environment=ZEN_MODEL_ID=deepseek-v4-flash-free
+Environment=ZEN_PROVIDER_ID=opencode
+
+ExecStart=/opt/tailrd/api/.venv/bin/python -m app.services.zen_proxy
+
+MemoryMax=512M
+
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
