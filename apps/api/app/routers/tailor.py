@@ -61,6 +61,8 @@ class RunSummary(BaseModel):
     company: str | None = None
     role: str | None = None
     overall_score: float | None = None
+    progress: int = 0
+    progress_stage: str | None = None
     created_at: str
     finished_at: str | None = None
 
@@ -125,6 +127,8 @@ async def submit_tailor_job(
         jd_label=_extract_label(jd_text) if jd_text.strip() else None,
         company=body.company,
         role=body.role,
+        progress=0,
+        progress_stage="queued",
         entitlement_consumed=True,
         entitlement_source=entitlement_source,
     )
@@ -176,6 +180,8 @@ async def list_runs(
             company=r.company,
             role=r.role,
             overall_score=r.overall_score,
+            progress=r.progress,
+            progress_stage=r.progress_stage,
             created_at=r.created_at.isoformat(),
             finished_at=r.finished_at.isoformat() if r.finished_at else None,
         )
@@ -204,6 +210,8 @@ async def get_run(
         company=run.company,
         role=run.role,
         overall_score=run.overall_score,
+        progress=run.progress,
+        progress_stage=run.progress_stage,
         created_at=run.created_at.isoformat(),
         finished_at=run.finished_at.isoformat() if run.finished_at else None,
         jd_text=run.jd_text,

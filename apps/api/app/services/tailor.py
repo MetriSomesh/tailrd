@@ -29,6 +29,19 @@ from app.services.storage import generate_storage_key, get_storage
 log = get_logger(__name__)
 
 
+async def _set_progress(
+    db: AsyncSession, run: TailorRun, progress: int, stage: str
+) -> None:
+    """Persist a progress checkpoint so the polling frontend can render a live bar.
+
+    Committed immediately (not batched) because the whole point is that a
+    concurrently-polling request sees the update mid-pipeline.
+    """
+    run.progress = progress
+    run.progress_stage = stage
+    await db.commit()
+
+
 async def execute_tailor_job(db: AsyncSession, run_id: str) -> None:
     """Execute the full tailoring pipeline for a given run.
 
@@ -49,6 +62,8 @@ async def execute_tailor_job(db: AsyncSession, run_id: str) -> None:
     # Mark as running
     run.status = "running"
     run.started_at = utcnow()
+    run.progress = 5
+    run.progress_stage = "scraping"
     await db.commit()
 
     try:
@@ -56,6 +71,7 @@ async def execute_tailor_job(db: AsyncSession, run_id: str) -> None:
         #    scrape here (headless browser) into plain text.
         jd_text = (run.jd_text or "").strip()
         if run.jd_url and len(jd_text) < 120:
+            await _set_progress(db, run, 10, "scraping")
             from app.services.jd_scraper import scrape_jd
 
             jd_text = await scrape_jd(run.jd_url)
@@ -67,6 +83,7 @@ async def execute_tailor_job(db: AsyncSession, run_id: str) -> None:
             log.info("tailor_job_jd_scraped", run_id=run_id, chars=len(jd_text))
 
         # 1. Build base resume from user profile
+        await _set_progress(db, run, 25, "building")
         from app.services.profile import build_base_resume_json
 
         base_resume = await build_base_resume_json(db, run.user_id)
@@ -78,7 +95,8 @@ async def execute_tailor_job(db: AsyncSession, run_id: str) -> None:
         profile = profile_result.scalar_one_or_none()
         allow_ai_projects = profile.allow_ai_projects if profile else False
 
-        # 3. Run the agent
+        # 3. Run the agent (the long-running step — LLM rewrite + self-scoring)
+        await _set_progress(db, run, 45, "tailoring")
         agent_result = await run_agent(
             base_resume=base_resume,
             jd_text=jd_text,
@@ -89,12 +107,15 @@ async def execute_tailor_job(db: AsyncSession, run_id: str) -> None:
         run.iterations = agent_result.iterations
 
         # 4. Generate DOCX
+        await _set_progress(db, run, 80, "generating")
         docx_bytes = _generate_docx_bytes(tailored)
 
         # 5. Score the result
+        await _set_progress(db, run, 88, "scoring")
         score_result = _score_tailored(tailored, jd_text)
 
         # 6. Upload DOCX to storage
+        await _set_progress(db, run, 94, "uploading")
         storage = get_storage()
         filename = f"Resume_{run.id[:8]}.docx"
         storage_key = generate_storage_key(run.user_id, run.id, filename)
@@ -110,6 +131,8 @@ async def execute_tailor_job(db: AsyncSession, run_id: str) -> None:
         run.score_json = json.dumps(score_result)
         run.overall_score = score_result.get("overall_score", 0)
         run.docx_storage_key = storage_key
+        run.progress = 100
+        run.progress_stage = "done"
         run.finished_at = utcnow()
 
         await db.commit()
@@ -128,6 +151,7 @@ async def execute_tailor_job(db: AsyncSession, run_id: str) -> None:
         run.status = "failed"
         run.error_code = error_code
         run.error_message = error_message
+        run.progress_stage = "failed"
         run.finished_at = utcnow()
 
         # Auto-refund entitlement on system errors (not on user-caused ones).

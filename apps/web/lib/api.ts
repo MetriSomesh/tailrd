@@ -108,6 +108,17 @@ export interface UsageSummary {
 
 export type RunStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled";
 
+export type RunStage =
+  | "queued"
+  | "scraping"
+  | "building"
+  | "tailoring"
+  | "generating"
+  | "scoring"
+  | "uploading"
+  | "done"
+  | "failed";
+
 export interface RunSummary {
   id: string;
   status: RunStatus;
@@ -115,6 +126,8 @@ export interface RunSummary {
   company: string | null;
   role: string | null;
   overall_score: number | null;
+  progress: number;
+  progress_stage: RunStage | null;
   created_at: string;
   finished_at: string | null;
 }

@@ -25,6 +25,13 @@ class TailorRun(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         String(20), nullable=False, default="queued", index=True
     )  # queued | running | succeeded | failed | cancelled
 
+    # Live progress for the wait-on-page UX. progress is 0-100; progress_stage is
+    # a short machine key the frontend maps to a label + stepper position.
+    # Stages: queued | scraping | building | tailoring | generating | scoring |
+    #         uploading | done | failed
+    progress: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    progress_stage: Mapped[str | None] = mapped_column(String(20))
+
     # Input
     jd_text: Mapped[str] = mapped_column(Text, nullable=False)
     jd_url: Mapped[str | None] = mapped_column(String(2048))
