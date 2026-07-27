@@ -126,63 +126,115 @@ def extract_main_text(html: str) -> str:
     return text
 
 
+_HTTP_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/141.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+}
+
+
+def _extract_from_html(html: str) -> str | None:
+    """Run the extraction pipeline on rendered/served HTML; None if too thin."""
+    structured = extract_jobposting_from_ld(_find_ld_json_blocks(html))
+    if structured and len(structured) >= MIN_JD_CHARS:
+        return structured
+    text = extract_main_text(html)
+    return text if len(text) >= MIN_JD_CHARS else None
+
+
+async def _scrape_with_http(url: str) -> str | None:
+    """Tier 1: plain HTTP fetch. Returns None (not raises) on any failure so the
+    caller can try the browser fallback."""
+    import httpx
+
+    try:
+        async with httpx.AsyncClient(
+            follow_redirects=True,
+            timeout=settings.JD_SCRAPE_TIMEOUT_SECONDS,
+            headers=_HTTP_HEADERS,
+        ) as client:
+            resp = await client.get(url)
+    except httpx.HTTPError as exc:
+        log.warning("jd_scrape_http_error", url=url[:120], error=type(exc).__name__)
+        return None
+
+    if resp.status_code >= 400:
+        log.warning("jd_scrape_http_status", url=url[:120], status=resp.status_code)
+        return None
+
+    content_type = resp.headers.get("content-type", "")
+    if content_type and "html" not in content_type and "text" not in content_type:
+        return None
+
+    return _extract_from_html(resp.text[:MAX_HTML_BYTES])
+
+
+async def _scrape_with_browser(url: str) -> str | None:
+    """Tier 2: render with a headless browser (Playwright) for JS-heavy pages.
+
+    Lazy-imports Playwright so it's only needed where the fallback is enabled.
+    Returns None on any failure (including Playwright not being installed)."""
+    try:
+        from playwright.async_api import async_playwright
+    except ImportError:
+        log.warning("jd_scrape_browser_unavailable", detail="playwright not installed")
+        return None
+
+    timeout_ms = settings.JD_SCRAPE_TIMEOUT_SECONDS * 1000
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+            )
+            try:
+                context = await browser.new_context(
+                    user_agent=_HTTP_HEADERS["User-Agent"],
+                    viewport={"width": 1280, "height": 1600},
+                )
+                page = await context.new_page()
+                await page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
+                try:
+                    await page.wait_for_load_state("networkidle", timeout=8000)
+                except Exception:  # noqa: BLE001 - best-effort settle
+                    pass
+                await page.wait_for_timeout(800)
+                html = await page.content()
+            finally:
+                await browser.close()
+    except Exception as exc:  # noqa: BLE001 - normalise all browser errors
+        log.warning("jd_scrape_browser_error", url=url[:120], error=type(exc).__name__)
+        return None
+
+    return _extract_from_html(html)
+
+
 async def scrape_jd(url: str) -> str:
     """Fetch the posting at `url` and return its job-description text.
 
-    Raises JDScrapeError (refundable) if the page can't be fetched or yields too
-    little text to be a real posting.
+    Tier 1 is a lightweight HTTP fetch (covers most ATS/job boards via JSON-LD).
+    Tier 2 (optional, JD_SCRAPE_BROWSER_FALLBACK) renders JS-heavy SPAs with a
+    headless browser. Raises JDScrapeError (refundable) if neither yields text.
     """
     if not isinstance(url, str) or not _URL_RE.match(url.strip()):
         raise JDScrapeError("The job posting link must start with http:// or https://.")
     url = url.strip()
 
-    import httpx
+    text = await _scrape_with_http(url)
+    if text:
+        log.info("jd_scrape_ok", url=url[:120], source="http", chars=len(text))
+        return text
 
-    headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-            "(KHTML, like Gecko) Chrome/141.0 Safari/537.36"
-        ),
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-    }
-    try:
-        async with httpx.AsyncClient(
-            follow_redirects=True,
-            timeout=settings.JD_SCRAPE_TIMEOUT_SECONDS,
-            headers=headers,
-        ) as client:
-            resp = await client.get(url)
-    except httpx.HTTPError as exc:
-        log.warning("jd_scrape_fetch_error", url=url[:120], error=type(exc).__name__)
-        raise JDScrapeError(
-            "We couldn't open that job posting link. Check the URL and try again."
-        ) from exc
+    if settings.JD_SCRAPE_BROWSER_FALLBACK:
+        text = await _scrape_with_browser(url)
+        if text:
+            log.info("jd_scrape_ok", url=url[:120], source="browser", chars=len(text))
+            return text
 
-    if resp.status_code >= 400:
-        log.warning("jd_scrape_http_status", url=url[:120], status=resp.status_code)
-        raise JDScrapeError(
-            f"That link returned an error ({resp.status_code}). Check it opens the posting."
-        )
-
-    content_type = resp.headers.get("content-type", "")
-    if content_type and "html" not in content_type and "text" not in content_type:
-        raise JDScrapeError("That link isn't a web page we can read. Paste the posting's page URL.")
-
-    html = resp.text[:MAX_HTML_BYTES]
-
-    # 1. Prefer structured JSON-LD JobPosting.
-    structured = extract_jobposting_from_ld(_find_ld_json_blocks(html))
-    if structured and len(structured) >= MIN_JD_CHARS:
-        log.info("jd_scrape_ok", url=url[:120], source="json-ld", chars=len(structured))
-        return structured
-
-    # 2. Fallback: readable main-content text.
-    text = extract_main_text(html)
-    if len(text) < MIN_JD_CHARS:
-        raise JDScrapeError(
-            "We couldn't read the job description from that page. It may load its content "
-            "with JavaScript — try a direct link to the posting, or a job-board listing."
-        )
-    log.info("jd_scrape_ok", url=url[:120], source="text", chars=len(text))
-    return text
+    raise JDScrapeError(
+        "We couldn't read the job description from that page. It may load its content "
+        "with JavaScript — try a direct link to the posting, or a job-board listing."
+    )

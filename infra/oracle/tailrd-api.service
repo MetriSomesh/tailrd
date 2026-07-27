@@ -1,0 +1,57 @@
+# systemd unit: Tailrd API + in-process worker (Oracle Always Free / Arm, 12 GB)
+# Install: sudo cp infra/oracle/tailrd-api.service /etc/systemd/system/tailrd-api.service
+# Enable:  sudo systemctl enable --now tailrd-api
+
+[Unit]
+Description=Tailrd API (FastAPI + worker)
+After=network.target redis-server.service
+Wants=redis-server.service
+
+[Service]
+Type=simple
+User=tailrd
+Group=tailrd
+WorkingDirectory=/opt/tailrd/api
+Environment=PATH=/opt/tailrd/api/.venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=HOME=/opt/tailrd
+Environment=XDG_CACHE_HOME=/opt/tailrd/api/.cache
+# Where `playwright install` placed Chromium (Tier-2 scrape fallback).
+Environment=PLAYWRIGHT_BROWSERS_PATH=/opt/tailrd/ms-playwright
+EnvironmentFile=/opt/tailrd/.env
+
+# Single uvicorn worker — it shares the process with the async job worker, so
+# the app must run as exactly one process.
+ExecStart=/opt/tailrd/api/.venv/bin/python -m uvicorn app.main:app \
+    --host 127.0.0.1 \
+    --port 8000 \
+    --workers 1 \
+    --loop uvloop \
+    --http httptools \
+    --log-level warning \
+    --no-access-log
+
+# 12 GB box: generous guard rather than a tight cap. A headless-browser scrape
+# peaks a few hundred MB transiently; nowhere near this ceiling.
+MemoryMax=2G
+MemoryHigh=1500M
+
+# Security hardening. ProtectSystem=full (not strict) keeps /usr,/boot,/etc
+# read-only while leaving Chromium's temp/cache writable without an exhaustive
+# ReadWritePaths whitelist. PrivateTmp gives the browser a private, writable /tmp.
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+
+# Restart policy
+Restart=on-failure
+RestartSec=3
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# Graceful shutdown: let an in-flight job drain
+TimeoutStopSec=60
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target

@@ -81,6 +81,9 @@ class Settings(BaseSettings):
     S3_REGION: str = "ap-south-1"
     AWS_ACCESS_KEY_ID: str | None = None
     AWS_SECRET_ACCESS_KEY: str | None = None
+    # Custom S3 endpoint for S3-compatible providers (e.g. Cloudflare R2:
+    # https://<accountid>.r2.cloudflarestorage.com). None → real AWS S3.
+    S3_ENDPOINT_URL: str | None = None
     PRESIGNED_URL_TTL_SECONDS: int = 300
 
     # ---- Payments ----
@@ -112,9 +115,13 @@ class Settings(BaseSettings):
     # settable via `opencode auth login`).
     OPENCODE_API_KEY: str | None = None
 
-    # Headless-browser scraping of the job-posting URL. Runs inside the worker
-    # job (async), so it can take a while; capped here.
+    # JD scraping timeout (per tier), used for both the HTTP fetch and the
+    # optional headless-browser render.
     JD_SCRAPE_TIMEOUT_SECONDS: int = 45
+    # When True, fall back to a headless browser (Playwright) if the lightweight
+    # HTTP fetch can't read the posting (JS-rendered SPAs). Off by default so
+    # local/dev needs no browser; enable on hosts where Playwright is installed.
+    JD_SCRAPE_BROWSER_FALLBACK: bool = False
 
     # Hard cap on resume-parse LLM extraction. The frontend proxy is configured
     # to tolerate this (experimental.proxyTimeout), so we allow the full ~35s

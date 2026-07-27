@@ -80,6 +80,8 @@ class S3StorageBackend(StorageBackend):
             region_name=settings.S3_REGION,
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            # Set for S3-compatible providers like Cloudflare R2; None → AWS S3.
+            endpoint_url=settings.S3_ENDPOINT_URL,
         )
         self._bucket = settings.S3_BUCKET
 

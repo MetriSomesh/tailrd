@@ -11,7 +11,9 @@ import json
 import httpx
 import pytest
 
+from app.core.config import settings
 from app.core.errors import JDScrapeError
+from app.services import jd_scraper
 from app.services.jd_scraper import (
     _clean_text,
     _strip_html,
@@ -182,3 +184,48 @@ class TestScrapeJd:
         _mock_get(monkeypatch, text="{}", content_type="application/json")
         with pytest.raises(JDScrapeError):
             await scrape_jd("https://api.example.com/job.json")
+
+
+class TestBrowserFallback:
+    async def test_falls_back_to_browser_when_http_thin(self, monkeypatch) -> None:
+        # HTTP returns a JS shell → thin → browser fallback (enabled) succeeds.
+        _mock_get(monkeypatch, text="<html><body><div id='root'></div></body></html>")
+        monkeypatch.setattr(settings, "JD_SCRAPE_BROWSER_FALLBACK", True)
+
+        rendered = (
+            "Senior Platform Engineer\n\nOwn Kubernetes, Terraform and CI/CD across a "
+            "large multi-region fleet. Strong Go and distributed-systems background needed "
+            "to keep the platform reliable and observable at scale."
+        )
+
+        async def _fake_browser(_url):
+            return rendered
+
+        monkeypatch.setattr(jd_scraper, "_scrape_with_browser", _fake_browser)
+
+        out = await scrape_jd("https://spa.example.com/platform-engineer")
+        assert out == rendered
+
+    async def test_no_fallback_when_disabled(self, monkeypatch) -> None:
+        _mock_get(monkeypatch, text="<html><body><div id='root'></div></body></html>")
+        monkeypatch.setattr(settings, "JD_SCRAPE_BROWSER_FALLBACK", False)
+
+        async def _boom(_url):
+            raise AssertionError("browser fallback must not run when disabled")
+
+        monkeypatch.setattr(jd_scraper, "_scrape_with_browser", _boom)
+
+        with pytest.raises(JDScrapeError):
+            await scrape_jd("https://spa.example.com/job")
+
+    async def test_raises_when_both_tiers_thin(self, monkeypatch) -> None:
+        _mock_get(monkeypatch, text="<html><body>shell</body></html>")
+        monkeypatch.setattr(settings, "JD_SCRAPE_BROWSER_FALLBACK", True)
+
+        async def _fake_browser(_url):
+            return None  # browser also couldn't extract
+
+        monkeypatch.setattr(jd_scraper, "_scrape_with_browser", _fake_browser)
+
+        with pytest.raises(JDScrapeError):
+            await scrape_jd("https://spa.example.com/job")
