@@ -70,8 +70,13 @@ class AgentBackend(ABC):
         base_resume: dict,
         jd_text: str,
         allow_ai_projects: bool = False,
+        feedback: str | None = None,
     ) -> AgentResult:
         """Run the tailoring agent. Returns the tailored resume JSON.
+
+        `feedback`, when given, is a revision brief from a prior low-scoring
+        attempt (missing keywords/skills/uncovered responsibilities) that the
+        backend should fold into the prompt to produce a better draft.
 
         Raises:
             AgentTimeoutError: if the agent exceeds the timeout
@@ -99,8 +104,10 @@ class MockAgentBackend(AgentBackend):
         base_resume: dict,
         jd_text: str,
         allow_ai_projects: bool = False,
+        feedback: str | None = None,
     ) -> AgentResult:
-        # Simulate ~1s processing time
+        # Deterministic stub — feedback is accepted for interface parity but the
+        # mock output doesn't change between attempts.
         await asyncio.sleep(0.1)
 
         editable = base_resume.get("editable", {})
@@ -239,6 +246,7 @@ class OpenCodeAgentBackend(AgentBackend):
         base_resume: dict,
         jd_text: str,
         allow_ai_projects: bool = False,
+        feedback: str | None = None,
     ) -> AgentResult:
         run_id = uuid.uuid4().hex[:12]
         workspace = self._workspace_root / run_id
@@ -249,7 +257,15 @@ class OpenCodeAgentBackend(AgentBackend):
                 json.dumps(base_resume, indent=2), encoding="utf-8"
             )
             (workspace / "temp_jd.txt").write_text(jd_text, encoding="utf-8")
-            (workspace / "instructions.md").write_text(_TAILOR_PROMPT, encoding="utf-8")
+            instructions = _TAILOR_PROMPT
+            if feedback:
+                instructions += (
+                    "\n\n## Revision feedback (address this)\n"
+                    "A previous draft scored below target. Rewrite to fix the gaps "
+                    "below while keeping everything truthful and defensible:\n\n"
+                    f"{feedback}\n"
+                )
+            (workspace / "instructions.md").write_text(instructions, encoding="utf-8")
 
             cmd = self._build_command(workspace)
             log.info("agent_spawn", run_id=run_id, model=self._model or "default")
@@ -370,13 +386,22 @@ class OpenAICompatibleAgentBackend(AgentBackend):
         base_resume: dict,
         jd_text: str,
         allow_ai_projects: bool = False,
+        feedback: str | None = None,
     ) -> AgentResult:
         import httpx
 
+        revision_block = ""
+        if feedback:
+            revision_block = (
+                "=== REVISION FEEDBACK (a previous draft scored below target) ===\n"
+                "Rewrite to fix these gaps while keeping everything truthful and "
+                f"defensible:\n{feedback}\n\n"
+            )
         user_message = (
             f"ALLOW_AI_PROJECTS={'true' if allow_ai_projects else 'false'}\n\n"
             f"=== BASE RESUME (JSON) ===\n{json.dumps(base_resume, ensure_ascii=False)}\n\n"
             f"=== JOB DESCRIPTION ===\n{jd_text}\n\n"
+            f"{revision_block}"
             "Return the tailored resume as a single JSON object now."
         )
         payload = {
@@ -529,6 +554,7 @@ async def run_agent(
     base_resume: dict,
     jd_text: str,
     allow_ai_projects: bool = False,
+    feedback: str | None = None,
 ) -> AgentResult:
     """Top-level entry point: breaker check → lock → run → unlock → report.
 
@@ -558,7 +584,7 @@ async def run_agent(
     # 3. Run the agent
     backend = get_agent_backend()
     try:
-        result = await backend.run(base_resume, jd_text, allow_ai_projects)
+        result = await backend.run(base_resume, jd_text, allow_ai_projects, feedback=feedback)
         agent_breaker.record_success()
         return result
     except (AgentTimeoutError, AgentUnavailableError, AgentOutputInvalidError):

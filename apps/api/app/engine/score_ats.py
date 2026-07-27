@@ -11,7 +11,11 @@ import os
 import re
 
 from app.engine.validators import load_json_safe, load_text_safe, validate_or_exit
-from app.engine.jd_parser import extract_skills_from_jd, extract_responsibilities
+from app.engine.jd_parser import (
+    extract_skills_from_jd,
+    extract_responsibilities,
+    extract_signal_sections_text,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -380,15 +384,44 @@ def compute_skills_match(jd_text, resume_skills):
     return match_pct, sorted(matched), sorted(missing)
 
 
+def extract_jd_keywords(jd_text):
+    """Build the keyword-scoring target from a JD.
+
+    Uses only the requirement-bearing text (responsibilities, qualifications,
+    role) plus the concrete skills the JD names — NOT the whole page. This keeps
+    company marketing ("What We Do", "Why <company>?", "The Perks") from padding
+    the target set with words no resume could reasonably contain.
+
+    Falls back to the full JD text when the posting isn't clearly structured (few
+    signal words), so short or single-block JDs still score sensibly.
+    """
+    signal = extract_signal_sections_text(jd_text)
+    words = set(extract_meaningful_words(signal))
+
+    # Always fold in the concrete skills the JD asks for (split multi-word skills
+    # into their component tokens so "system design" contributes design/system).
+    for skill in extract_skills_from_jd(jd_text):
+        for token in re.split(r"[\s.\-]+", skill):
+            if len(token) > 2:
+                words.add(token)
+
+    # Not enough structured signal — fall back to the full text.
+    if len(words) < 15:
+        words = set(extract_meaningful_words(jd_text))
+
+    return words
+
+
 def compute_keyword_match(jd_text, resume_text):
     """Compute keyword overlap between JD and full resume text.
 
-    Uses meaningful words (stopwords removed) from the JD as the target set.
+    The target set is the JD's *requirement* keywords (see extract_jd_keywords),
+    not every word on the page, so verbose career pages don't tank the score.
 
     Returns:
         tuple: (keyword_pct, term_overlap_pct, missing_keywords, matched_keywords)
     """
-    jd_words = set(extract_meaningful_words(jd_text))
+    jd_words = extract_jd_keywords(jd_text)
     resume_words = set(extract_meaningful_words(resume_text))
 
     if not jd_words:

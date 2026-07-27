@@ -19,7 +19,13 @@ import tempfile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import REFUNDABLE_ERROR_CODES
+from app.core.config import settings
+from app.core.errors import (
+    REFUNDABLE_ERROR_CODES,
+    AgentOutputInvalidError,
+    AgentTimeoutError,
+    AgentUnavailableError,
+)
 from app.core.logging import get_logger
 from app.db.base import utcnow
 from app.db.models.run import TailorRun
@@ -40,6 +46,45 @@ async def _set_progress(
     run.progress = progress
     run.progress_stage = stage
     await db.commit()
+
+
+def _build_feedback(score_result: dict, target: float) -> str:
+    """Turn a score breakdown into a concise, truthful revision brief for the agent.
+
+    Names the concrete gaps (missing skills/keywords, uncovered responsibilities)
+    while explicitly forbidding fabrication, so the next draft closes real gaps
+    rather than padding with things the candidate can't defend.
+    """
+    overall = score_result.get("overall_score", 0.0)
+    lines = [
+        f"The last draft scored {overall}/100 (target {target:g}). Raise the match "
+        "without inventing anything the candidate can't defend in an interview."
+    ]
+
+    skills_missing = score_result.get("skills_missing") or []
+    if skills_missing:
+        lines.append(
+            "- Skills the job asks for that are absent — add ONLY those the "
+            "candidate genuinely has (check base_resume); never fabricate: "
+            f"{', '.join(skills_missing[:12])}."
+        )
+
+    missing_keywords = score_result.get("missing_keywords") or []
+    if missing_keywords:
+        lines.append(
+            "- Relevant terms to weave in naturally where truthful: "
+            f"{', '.join(missing_keywords[:15])}."
+        )
+
+    uncovered = score_result.get("responsibilities_uncovered") or []
+    if uncovered:
+        joined = "; ".join(u[:120] for u in uncovered[:6])
+        lines.append(
+            "- Job responsibilities not yet reflected — rework experience bullets "
+            f"and project descriptions to show real, relevant work on these: {joined}."
+        )
+
+    return "\n".join(lines)
 
 
 async def execute_tailor_job(db: AsyncSession, run_id: str) -> None:
@@ -95,24 +140,88 @@ async def execute_tailor_job(db: AsyncSession, run_id: str) -> None:
         profile = profile_result.scalar_one_or_none()
         allow_ai_projects = profile.allow_ai_projects if profile else False
 
-        # 3. Run the agent (the long-running step — LLM rewrite + self-scoring)
-        await _set_progress(db, run, 45, "tailoring")
-        agent_result = await run_agent(
-            base_resume=base_resume,
-            jd_text=jd_text,
-            allow_ai_projects=allow_ai_projects,
-        )
+        # 3. Tailor iteratively: rewrite → score → if below target, feed the gaps
+        #    back to the agent and try again, keeping the best-scoring draft.
+        #    Bounded by MAX_ITERATIONS so latency/cost stay predictable.
+        target = settings.TARGET_SCORE
+        max_iterations = max(1, settings.MAX_ITERATIONS)
 
-        tailored = agent_result.tailored_json
-        run.iterations = agent_result.iterations
+        best_tailored: dict | None = None
+        best_score_result: dict | None = None
+        best_overall = -1.0
+        feedback: str | None = None
+        attempts = 0
 
-        # 4. Generate DOCX
+        for attempt in range(1, max_iterations + 1):
+            # Progress climbs across attempts but stays inside the tailoring band.
+            await _set_progress(db, run, min(45 + (attempt - 1) * 12, 74), "tailoring")
+
+            try:
+                agent_result = await run_agent(
+                    base_resume=base_resume,
+                    jd_text=jd_text,
+                    allow_ai_projects=allow_ai_projects,
+                    feedback=feedback,
+                )
+            except (
+                AgentTimeoutError,
+                AgentUnavailableError,
+                AgentOutputInvalidError,
+            ) as exc:
+                # A revision attempt can fail (e.g. the free model occasionally
+                # emits no file). If we already have a good draft, keep it rather
+                # than discarding all the work. Only propagate when there's
+                # nothing to fall back on (the very first attempt).
+                if best_tailored is not None:
+                    log.warning(
+                        "tailor_job_revision_failed_keeping_best",
+                        run_id=run_id,
+                        attempt=attempt,
+                        best=best_overall,
+                        error=str(exc)[:200],
+                    )
+                    break
+                raise
+
+            attempts = attempt
+
+            candidate = agent_result.tailored_json
+            candidate_score = _score_tailored(candidate, jd_text)
+            candidate_overall = candidate_score.get("overall_score", 0.0)
+
+            improved = candidate_overall > best_overall
+            if improved:
+                best_tailored = candidate
+                best_score_result = candidate_score
+                best_overall = candidate_overall
+
+            log.info(
+                "tailor_job_iteration",
+                run_id=run_id,
+                attempt=attempt,
+                score=candidate_overall,
+                best=best_overall,
+                target=target,
+            )
+
+            # Stop when good enough, out of tries, or a revision stopped helping.
+            if candidate_overall >= target or attempt == max_iterations:
+                break
+            if attempt > 1 and not improved:
+                break
+
+            feedback = _build_feedback(candidate_score, target)
+
+        tailored = best_tailored
+        score_result = best_score_result
+        run.iterations = attempts
+
+        # 4. Generate DOCX for the best-scoring draft
         await _set_progress(db, run, 80, "generating")
         docx_bytes = _generate_docx_bytes(tailored)
 
-        # 5. Score the result
+        # 5. Scoring already done in the loop — checkpoint for the UI.
         await _set_progress(db, run, 88, "scoring")
-        score_result = _score_tailored(tailored, jd_text)
 
         # 6. Upload DOCX to storage
         await _set_progress(db, run, 94, "uploading")

@@ -371,6 +371,23 @@ def extract_sections(jd_text):
         "how to apply",
         "culture",
         "values",
+        # Marketing / company-narrative headers. Recognised so they segment into
+        # their own sections and can be excluded from scoring signal.
+        "what we do",
+        "who we are",
+        "our mission",
+        "the mission",
+        "our story",
+        "why ",
+        "perks",
+        "the perks",
+        "what makes you",
+        "what we don't want",
+        "don't want",
+        "best suited for",
+        "life at",
+        "equal opportunity",
+        "diversity",
     ]
 
     for line in jd_text.split("\n"):
@@ -455,8 +472,8 @@ def extract_responsibilities(jd_text):
             # Strip bullet markers
             cleaned = re.sub(r"^[\s\-•*·▪]+", "", line).strip()
             if cleaned and len(cleaned) > 15:  # Skip very short lines
-                # Filter out culture/soft-value statements
-                if _is_culture_statement(cleaned):
+                # Filter out culture/soft-value and marketing-narrative statements
+                if _is_noise_line(cleaned):
                     continue
                 responsibilities.append(cleaned)
 
@@ -544,6 +561,115 @@ def _is_culture_statement(text):
     return False
 
 
+# Section names that carry company marketing / culture / benefits rather than the
+# actual job requirements. Excluded from the scoring signal so a verbose career
+# page ("What We Do", "Why <company>?", "The Perks") doesn't dilute the match.
+NOISE_SECTION_KEYWORDS = (
+    "about us",
+    "about the company",
+    "about the team",
+    "who we are",
+    "what we do",
+    "our mission",
+    "the mission",
+    "our story",
+    "why ",
+    "perks",
+    "benefit",
+    "culture",
+    "values",
+    "what makes you",
+    "what we don't",
+    "don't want",
+    "thrives",
+    "how to apply",
+    "life at",
+    "equal opportunity",
+    "diversity",
+    "eeo",
+)
+
+# Opening phrases that mark first/second-person recruiting narrative rather than a
+# concrete duty or requirement.
+_NARRATIVE_PREFIXES = (
+    "we're",
+    "we are",
+    "we want",
+    "we don't",
+    "we do not",
+    "we need",
+    "we believe",
+    "we look",
+    "we seek",
+    "we value",
+    "if you",
+    "you won't",
+    "you will not",
+    "sound like you",
+    "does this sound",
+    "join us",
+    "come build",
+    "ready to",
+)
+
+
+def is_noise_section(name: str) -> bool:
+    """True if a section name is company marketing/culture rather than requirements."""
+    n = name.lower().strip()
+    return any(k in n for k in NOISE_SECTION_KEYWORDS)
+
+
+def _has_tech(text: str) -> bool:
+    """True if the line names any recognised technical skill/tool/concept."""
+    return bool(extract_skills_from_jd(text))
+
+
+def _is_noise_line(text: str) -> bool:
+    """True if a line is culture/marketing narrative rather than a real duty.
+
+    Kept deliberately conservative: a line that names any concrete technology is
+    always retained, so genuine responsibilities are never dropped.
+    """
+    if _is_culture_statement(text):
+        return True
+    # Normalise smart quotes so prefix checks match scraped text ("We're" often
+    # arrives with a curly apostrophe that wouldn't match a straight one).
+    tl = text.lower().strip().replace("\u2019", "'").replace("\u2018", "'")
+    if not tl:
+        return True
+    if _has_tech(text):
+        return False
+    # Rhetorical marketing questions ("Sound like you?", "Why join us?").
+    if tl.endswith("?") and len(text) < 90:
+        return True
+    # First/second-person recruiting narrative with no technical substance.
+    if any(tl.startswith(p) for p in _NARRATIVE_PREFIXES):
+        return True
+    # Motivational filler.
+    if any(w in tl for w in ("crave", "obsessed", "allergic", "we offer", "you'll love")):
+        return True
+    return False
+
+
+def extract_signal_sections_text(jd_text):
+    """Return only the requirement-bearing text of a JD.
+
+    Drops the catch-all "general" preamble and any marketing/culture sections,
+    and strips marketing-narrative lines from what remains. Used to build the
+    keyword-scoring target so company boilerplate doesn't dilute the match.
+    """
+    sections = extract_sections(jd_text)
+    parts = []
+    for name, lines in sections.items():
+        if name == "general" or is_noise_section(name):
+            continue
+        for line in lines:
+            if _is_noise_line(line):
+                continue
+            parts.append(line)
+    return "\n".join(parts).strip()
+
+
 def extract_required_qualifications(jd_text):
     """Extract required qualifications/skills section content.
 
@@ -573,6 +699,8 @@ def extract_required_qualifications(jd_text):
         for line in sections.get(key, []):
             cleaned = re.sub(r"^[\s\-•*·▪]+", "", line).strip()
             if cleaned and len(cleaned) > 10:
+                if _is_noise_line(cleaned):
+                    continue
                 qualifications.append(cleaned)
 
     return qualifications
