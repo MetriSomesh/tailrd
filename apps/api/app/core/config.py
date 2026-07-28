@@ -153,7 +153,7 @@ class Settings(BaseSettings):
     AGENT_BREAKER_COOLDOWN_SECONDS: int = 300
 
     # ---- Tailoring pipeline ----
-    TARGET_SCORE: float = 70.0
+    TARGET_SCORE: float = 60.0
     MAX_ITERATIONS: int = 5
 
     # ---- Quota / entitlements ----

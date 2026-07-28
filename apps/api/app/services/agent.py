@@ -167,8 +167,9 @@ exactly as in base_resume (real employers are factual), and keep "dates" and \
 "location" as given. You MAY rewrite the "title" to align with the target role, \
 and you SHOULD rewrite every bullet to foreground the JD's responsibilities, \
 tools and measurable impact. Keep the roles most relevant to this JD.
-- editable.projects: 3-5 entries. Each description is 2-3 achievement lines \
-separated by newlines, naming the JD-relevant tech and the outcome.
+- editable.projects: exactly 2 entries (the most relevant to this JD). Each \
+description is 2-3 achievement lines separated by newlines, naming the \
+JD-relevant tech and the outcome.
 
 If the environment variable ALLOW_AI_PROJECTS is "false", do NOT invent entirely \
 new projects, only rewrite the candidate's existing ones (their descriptions and \
@@ -366,8 +367,9 @@ employers are factual) and keep "dates" and "location" as given. You MAY rewrite
 the "title" to align with the target role, and you SHOULD rewrite every bullet to \
 foreground the JD's responsibilities, tools and measurable impact. Keep the most \
 relevant roles.
-- editable.projects: 3-5 entries; each description is 2-3 achievement lines \
-separated by newlines, naming the JD-relevant tech and the outcome. If \
+- editable.projects: exactly 2 entries (the most relevant to this JD); each \
+description is 2-3 achievement lines separated by newlines, naming the \
+JD-relevant tech and the outcome. If \
 ALLOW_AI_PROJECTS is false, do not invent entirely new projects, only rewrite \
 existing ones; if true, you may add new relevant projects.
 
