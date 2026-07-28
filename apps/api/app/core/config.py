@@ -234,6 +234,12 @@ class Settings(BaseSettings):
                 problems.append("PAYMENT_PROVIDER must not be 'mock' in production")
             if self.STORAGE_BACKEND == "local":
                 problems.append("STORAGE_BACKEND must be 's3' in production")
+            if self.AGENT_BACKEND == "mock":
+                problems.append(
+                    "AGENT_BACKEND must not be 'mock' in production (tailoring would be fake)"
+                )
+            if not self.AGENT_ENABLED:
+                problems.append("AGENT_ENABLED must be true in production")
 
         if self.EMAIL_PROVIDER == "resend" and not self.RESEND_API_KEY:
             problems.append("RESEND_API_KEY is required when EMAIL_PROVIDER=resend")
