@@ -175,3 +175,64 @@ class TestErrorTaxonomy:
 
         assert QuotaExceededError.code not in REFUNDABLE_ERROR_CODES
         assert ValidationError.code not in REFUNDABLE_ERROR_CODES
+
+
+class TestProdHardeningGuards:
+    def _valid_prod_kwargs(self) -> dict:
+        return dict(
+            ENVIRONMENT="production",
+            SECRET_KEY="x" * 40,
+            COOKIE_SECURE=True,
+            DEBUG=False,
+            DATABASE_URL="postgresql+psycopg://u:p@h/db",
+            EMAIL_PROVIDER="resend",
+            RESEND_API_KEY="re_x",
+            PAYMENT_PROVIDER="razorpay",
+            RAZORPAY_KEY_ID="k",
+            RAZORPAY_KEY_SECRET="s",
+            RAZORPAY_WEBHOOK_SECRET="w",
+            STORAGE_BACKEND="s3",
+            S3_BUCKET="b",
+            AGENT_BACKEND="openai",
+            FRONTEND_URL="https://app.example.com",
+            CORS_ORIGINS="https://app.example.com",
+        )
+
+    def test_valid_prod_config_passes(self) -> None:
+        from app.core.config import Settings
+
+        assert Settings(**self._valid_prod_kwargs()).validate_for_runtime() == []
+
+    def test_prod_rejects_http_frontend_url(self) -> None:
+        from app.core.config import Settings
+
+        kw = self._valid_prod_kwargs()
+        kw["FRONTEND_URL"] = "http://app.example.com"
+        assert any("FRONTEND_URL must use https" in p for p in Settings(**kw).validate_for_runtime())
+
+    def test_prod_rejects_localhost_cors(self) -> None:
+        from app.core.config import Settings
+
+        kw = self._valid_prod_kwargs()
+        kw["CORS_ORIGINS"] = "https://app.example.com,http://localhost:3000"
+        assert any("CORS_ORIGINS" in p for p in Settings(**kw).validate_for_runtime())
+
+    def test_allowed_host_list_parsing(self) -> None:
+        from app.core.config import Settings
+
+        s = Settings(ENVIRONMENT="local", ALLOWED_HOSTS="api.example.com, 127.0.0.1 ,localhost")
+        assert s.allowed_host_list == ["api.example.com", "127.0.0.1", "localhost"]
+
+    def test_create_app_adds_trusted_host_only_when_configured(self, monkeypatch) -> None:
+        from starlette.middleware.trustedhost import TrustedHostMiddleware
+
+        from app.core.config import settings as live_settings
+        from app.main import create_app
+
+        monkeypatch.setattr(live_settings, "ALLOWED_HOSTS", "")
+        app_off = create_app()
+        assert not any(m.cls is TrustedHostMiddleware for m in app_off.user_middleware)
+
+        monkeypatch.setattr(live_settings, "ALLOWED_HOSTS", "api.example.com,127.0.0.1")
+        app_on = create_app()
+        assert any(m.cls is TrustedHostMiddleware for m in app_on.user_middleware)

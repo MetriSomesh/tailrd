@@ -15,6 +15,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.core.config import settings
 from app.core.handlers import register_exception_handlers
@@ -121,6 +122,10 @@ def create_app() -> FastAPI:
     )
 
     # Order matters: the outermost middleware is added last.
+    # Host allow-list (optional; off when ALLOWED_HOSTS is empty). Rejects
+    # requests with a spoofed/unexpected Host header before anything else runs.
+    if settings.allowed_host_list:
+        app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_host_list)
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(GZipMiddleware, minimum_size=1024)
     app.add_middleware(

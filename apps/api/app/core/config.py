@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     BACKEND_URL: str = "http://localhost:8000"
     # Comma-separated list of allowed CORS origins.
     CORS_ORIGINS: str = "http://localhost:3000"
+    # Comma-separated Host allow-list for TrustedHostMiddleware. Empty = disabled
+    # (fine locally / behind a Host-routing proxy). In prod set to the API host
+    # plus 127.0.0.1/localhost so the local /ready probe still works.
+    ALLOWED_HOSTS: str = ""
 
     # ---- Security ----
     # 32+ byte random secret. Auto-generated in local/test, REQUIRED in prod.
@@ -208,6 +212,11 @@ class Settings(BaseSettings):
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
 
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def allowed_host_list(self) -> list[str]:
+        return [h.strip() for h in self.ALLOWED_HOSTS.split(",") if h.strip()]
+
     @field_validator("LOG_LEVEL")
     @classmethod
     def _upper_log_level(cls, v: str) -> str:
@@ -246,6 +255,12 @@ class Settings(BaseSettings):
                 )
             if not self.AGENT_ENABLED:
                 problems.append("AGENT_ENABLED must be true in production")
+            if not self.FRONTEND_URL.lower().startswith("https://"):
+                problems.append("FRONTEND_URL must use https:// in production")
+            if any(
+                "localhost" in o or "127.0.0.1" in o for o in self.cors_origin_list
+            ):
+                problems.append("CORS_ORIGINS must not include localhost in production")
 
         if self.EMAIL_PROVIDER == "resend" and not self.RESEND_API_KEY:
             problems.append("RESEND_API_KEY is required when EMAIL_PROVIDER=resend")
