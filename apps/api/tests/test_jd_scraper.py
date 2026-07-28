@@ -7,6 +7,7 @@ logic that turns rendered HTML / JSON-LD into clean job-description text.
 from __future__ import annotations
 
 import json
+import socket
 
 import httpx
 import pytest
@@ -113,6 +114,7 @@ def _mock_get(monkeypatch, *, text="", status=200, content_type="text/html", exc
             self.status_code = status
             self.text = text
             self.headers = {"content-type": content_type}
+            self.is_redirect = 300 <= status < 400
 
     class FakeClient:
         def __init__(self, *a, **k):
@@ -130,6 +132,12 @@ def _mock_get(monkeypatch, *, text="", status=200, content_type="text/html", exc
             return FakeResp()
 
     monkeypatch.setattr(httpx, "AsyncClient", FakeClient)
+
+    # Keep the SSRF guard hermetic: any host "resolves" to a public IP.
+    def _fake_getaddrinfo(host, port, *a, **k):
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", port or 80))]
+
+    monkeypatch.setattr(jd_scraper.socket, "getaddrinfo", _fake_getaddrinfo)
 
 
 class TestScrapeJd:
@@ -229,3 +237,63 @@ class TestBrowserFallback:
 
         with pytest.raises(JDScrapeError):
             await scrape_jd("https://spa.example.com/job")
+
+
+# --- SSRF guard --------------------------------------------------------------
+
+
+class TestSsrfGuard:
+    @pytest.mark.parametrize(
+        "ip",
+        [
+            "127.0.0.1",
+            "10.0.0.1",
+            "192.168.1.1",
+            "172.16.0.1",
+            "169.254.169.254",  # cloud metadata
+            "::1",
+            "0.0.0.0",
+            "fc00::1",
+            "::ffff:127.0.0.1",  # IPv4-mapped loopback
+        ],
+    )
+    def test_blocks_non_public_ips(self, ip: str) -> None:
+        assert jd_scraper._is_blocked_ip(ip) is True
+
+    @pytest.mark.parametrize("ip", ["8.8.8.8", "1.1.1.1", "93.184.216.34"])
+    def test_allows_public_ips(self, ip: str) -> None:
+        assert jd_scraper._is_blocked_ip(ip) is False
+
+    def test_host_literal_blocking(self) -> None:
+        assert jd_scraper._host_is_blocked_literal("localhost")
+        assert jd_scraper._host_is_blocked_literal("db.local")
+        assert jd_scraper._host_is_blocked_literal("169.254.169.254")
+        assert not jd_scraper._host_is_blocked_literal("example.com")
+
+    async def test_assert_public_url_rejects_scheme(self) -> None:
+        with pytest.raises(JDScrapeError):
+            await jd_scraper._assert_public_url("ftp://example.com/x")
+
+    async def test_assert_public_url_blocks_metadata_ip_literal(self) -> None:
+        # Numeric literal — getaddrinfo parses it without a DNS query.
+        with pytest.raises(JDScrapeError):
+            await jd_scraper._assert_public_url("http://169.254.169.254/latest/meta-data/")
+
+    async def test_assert_public_url_blocks_host_resolving_private(self, monkeypatch) -> None:
+        def _resolve_private(host, port, *a, **k):
+            return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.1.2.3", port or 80))]
+
+        monkeypatch.setattr(jd_scraper.socket, "getaddrinfo", _resolve_private)
+        with pytest.raises(JDScrapeError):
+            await jd_scraper._assert_public_url("http://internal.example.test/")
+
+    async def test_assert_public_url_allows_public_host(self, monkeypatch) -> None:
+        def _resolve_public(host, port, *a, **k):
+            return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", port or 80))]
+
+        monkeypatch.setattr(jd_scraper.socket, "getaddrinfo", _resolve_public)
+        await jd_scraper._assert_public_url("https://example.com/job")  # must not raise
+
+    async def test_scrape_jd_blocks_internal_url_end_to_end(self) -> None:
+        with pytest.raises(JDScrapeError):
+            await scrape_jd("http://169.254.169.254/latest/meta-data/")

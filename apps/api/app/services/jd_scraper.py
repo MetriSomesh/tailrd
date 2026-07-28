@@ -14,11 +14,15 @@ The pure text helpers are separated from the fetch so they can be unit-tested.
 
 from __future__ import annotations
 
+import asyncio
 import html as html_lib
+import ipaddress
 import json
 import re
+import socket
 from collections.abc import Iterator
 from typing import Any
+from urllib.parse import urljoin, urlparse
 
 from app.core.config import settings
 from app.core.errors import JDScrapeError
@@ -29,6 +33,7 @@ log = get_logger(__name__)
 MAX_JD_CHARS = 15000
 MIN_JD_CHARS = 120
 MAX_HTML_BYTES = 4_000_000  # don't parse absurdly large pages
+MAX_REDIRECTS = 5  # bound redirect chains; each hop is SSRF-revalidated
 
 _TAG_RE = re.compile(r"<[^>]+>")
 _SCRIPT_STYLE_RE = re.compile(r"(?is)<(script|style|noscript)[^>]*>.*?</\1>")
@@ -145,22 +150,111 @@ def _extract_from_html(html: str) -> str | None:
     return text if len(text) >= MIN_JD_CHARS else None
 
 
+# ---------------------------------------------------------------------------
+# SSRF protection
+#
+# The JD URL is attacker-controlled and we fetch it server-side, so a naive
+# fetch lets a user reach internal services (169.254.169.254 cloud metadata,
+# 127.0.0.1, 10/8, etc.). We resolve the host and refuse any non-public address,
+# and re-check on every redirect hop.
+# ---------------------------------------------------------------------------
+
+
+def _is_blocked_ip(ip_str: str) -> bool:
+    """True if an IP is not a routable public address (or is unparseable)."""
+    try:
+        ip = ipaddress.ip_address(ip_str)
+    except ValueError:
+        return True  # can't reason about it -> block
+    # Unwrap IPv4-mapped IPv6 (e.g. ::ffff:127.0.0.1) so the IPv4 rules apply.
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+        ip = ip.ipv4_mapped
+    return (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local  # covers 169.254.169.254 (cloud metadata)
+        or ip.is_reserved
+        or ip.is_multicast
+        or ip.is_unspecified
+    )
+
+
+def _host_is_blocked_literal(host: str) -> bool:
+    """Cheap, DNS-free check: blocked IP literal or an obviously-local hostname."""
+    if not host:
+        return True
+    h = host.strip("[]").lower()  # strip IPv6 brackets
+    if h in ("localhost",) or h.endswith(".localhost") or h.endswith(".local"):
+        return True
+    try:
+        ipaddress.ip_address(h)
+    except ValueError:
+        return False  # a hostname; resolved+checked elsewhere
+    return _is_blocked_ip(h)
+
+
+async def _assert_public_url(url: str) -> None:
+    """Raise JDScrapeError unless `url` is http(s) and resolves to public IPs only.
+
+    Blocks if ANY resolved address is non-public, so a hostname that maps to both
+    a public and a private IP can't be used to slip through.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme.lower() not in ("http", "https"):
+        raise JDScrapeError("The job posting link must start with http:// or https://.")
+    host = parsed.hostname
+    if not host:
+        raise JDScrapeError("That job posting link is not a valid URL.")
+
+    port = parsed.port or (443 if parsed.scheme.lower() == "https" else 80)
+    try:
+        infos = await asyncio.to_thread(
+            socket.getaddrinfo, host, port, 0, socket.SOCK_STREAM
+        )
+    except socket.gaierror:
+        raise JDScrapeError("We couldn't resolve that job posting link.") from None
+
+    for info in infos:
+        ip_str = info[4][0]
+        if _is_blocked_ip(ip_str):
+            log.warning("jd_scrape_ssrf_blocked", host=host[:80], ip=ip_str)
+            raise JDScrapeError(
+                "That link points to a private or internal address, which isn't allowed."
+            )
+
+
 async def _scrape_with_http(url: str) -> str | None:
-    """Tier 1: plain HTTP fetch. Returns None (not raises) on any failure so the
-    caller can try the browser fallback."""
+    """Tier 1: plain HTTP fetch. Returns None (not raises) on ordinary failures so
+    the caller can try the browser fallback. Redirects are followed manually and
+    each hop is SSRF-revalidated (a JDScrapeError from the guard propagates)."""
     import httpx
 
+    resp = None
     try:
         async with httpx.AsyncClient(
-            follow_redirects=True,
+            follow_redirects=False,
             timeout=settings.JD_SCRAPE_TIMEOUT_SECONDS,
             headers=_HTTP_HEADERS,
         ) as client:
-            resp = await client.get(url)
+            current = url
+            for _hop in range(MAX_REDIRECTS + 1):
+                resp = await client.get(current)
+                if not resp.is_redirect:
+                    break
+                location = resp.headers.get("location")
+                if not location:
+                    return None
+                current = urljoin(current, location)
+                await _assert_public_url(current)  # SSRF guard on the redirect target
+            else:
+                log.warning("jd_scrape_too_many_redirects", url=url[:120])
+                return None
     except httpx.HTTPError as exc:
         log.warning("jd_scrape_http_error", url=url[:120], error=type(exc).__name__)
         return None
 
+    if resp is None:
+        return None
     if resp.status_code >= 400:
         log.warning("jd_scrape_http_status", url=url[:120], status=resp.status_code)
         return None
@@ -195,6 +289,26 @@ async def _scrape_with_browser(url: str) -> str | None:
                     user_agent=_HTTP_HEADERS["User-Agent"],
                     viewport={"width": 1280, "height": 1600},
                 )
+
+                # SSRF guard for the browser: fully re-resolve navigation targets
+                # (catches redirects to internal hosts) and cheaply block any
+                # subresource pointed at a private IP literal / localhost.
+                async def _guard(route: Any) -> None:
+                    req = route.request
+                    try:
+                        if req.is_navigation_request():
+                            await _assert_public_url(req.url)
+                        elif _host_is_blocked_literal(urlparse(req.url).hostname or ""):
+                            await route.abort()
+                            return
+                        await route.continue_()
+                    except JDScrapeError:
+                        await route.abort()
+                    except Exception:  # noqa: BLE001 - never let the guard crash the render
+                        await route.abort()
+
+                await context.route("**/*", _guard)
+
                 page = await context.new_page()
                 await page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
                 try:
@@ -222,6 +336,9 @@ async def scrape_jd(url: str) -> str:
     if not isinstance(url, str) or not _URL_RE.match(url.strip()):
         raise JDScrapeError("The job posting link must start with http:// or https://.")
     url = url.strip()
+
+    # Reject internal/private targets before we make any request (SSRF).
+    await _assert_public_url(url)
 
     text = await _scrape_with_http(url)
     if text:
