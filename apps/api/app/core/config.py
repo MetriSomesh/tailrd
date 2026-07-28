@@ -198,6 +198,10 @@ class Settings(BaseSettings):
     RETAIN_RUNS_DAYS: int = 365
     ACCOUNT_DELETION_GRACE_DAYS: int = 30
 
+    # ---- Maintenance (crash recovery + retention sweeps) ----
+    MAINTENANCE_ENABLED: bool = True
+    MAINTENANCE_INTERVAL_SECONDS: int = 60 * 60 * 6  # every 6 hours
+
     # ------------------------------------------------------------------
     # Derived / validated
     # ------------------------------------------------------------------

@@ -87,19 +87,28 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         worker_task = asyncio.create_task(worker_loop(), name="tailrd-worker")
         log.info("worker_started", concurrency=settings.WORKER_CONCURRENCY)
 
+    maintenance_task: asyncio.Task[None] | None = None
+    if settings.MAINTENANCE_ENABLED:
+        from app.services.maintenance import maintenance_loop
+
+        maintenance_task = asyncio.create_task(maintenance_loop(), name="tailrd-maintenance")
+        log.info("maintenance_started")
+
     try:
         yield
     finally:
         log.info("shutdown_initiated")
 
-        if worker_task is not None:
-            worker_task.cancel()
+        for task, name in ((worker_task, "worker"), (maintenance_task, "maintenance")):
+            if task is None:
+                continue
+            task.cancel()
             try:
-                await asyncio.wait_for(worker_task, timeout=30)
+                await asyncio.wait_for(task, timeout=30)
             except (TimeoutError, asyncio.CancelledError):
-                log.warning("worker_shutdown_forced")
+                log.warning("task_shutdown_forced", task=name)
             except Exception:  # noqa: BLE001
-                log.exception("worker_shutdown_error")
+                log.exception("task_shutdown_error", task=name)
 
         from app.db.session import dispose_engine
         from app.services.cache import close_redis

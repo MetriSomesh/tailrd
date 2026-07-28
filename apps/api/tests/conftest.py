@@ -23,6 +23,7 @@ os.environ.update(
         "PAYMENT_PROVIDER": "mock",
         "AGENT_BACKEND": "mock",
         "WORKER_ENABLED": "false",
+        "MAINTENANCE_ENABLED": "false",
         "COOKIE_SECURE": "false",
         # Keep JD scraping hermetic: never fall through to a real headless
         # browser in tests, regardless of what the local .env sets.
