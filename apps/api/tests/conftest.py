@@ -27,6 +27,8 @@ os.environ.update(
         # Keep JD scraping hermetic: never fall through to a real headless
         # browser in tests, regardless of what the local .env sets.
         "JD_SCRAPE_BROWSER_FALLBACK": "false",
+        # Deterministic tests: rate limiting is off unless a test opts in.
+        "RATE_LIMIT_ENABLED": "false",
     }
 )
 

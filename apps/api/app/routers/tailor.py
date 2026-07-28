@@ -19,6 +19,7 @@ from app.db.models.profile import Profile
 from app.db.models.run import TailorRun
 from app.db.models.user import User
 from app.db.session import get_session
+from app.core.ratelimit import rate_limit
 from app.services.quota import check_and_consume_entitlement, refund_entitlement
 from app.services.storage import get_storage
 from app.workers.runner import enqueue_job
@@ -90,7 +91,13 @@ class TailorResponse(BaseModel):
 
 
 @router.post(
-    "/tailor", response_model=TailorResponse, status_code=202, dependencies=[Depends(require_csrf)]
+    "/tailor",
+    response_model=TailorResponse,
+    status_code=202,
+    dependencies=[
+        Depends(require_csrf),
+        Depends(rate_limit("tailor", settings.RL_TAILOR_PER_HOUR, 3600)),
+    ],
 )
 async def submit_tailor_job(
     body: TailorRequest,

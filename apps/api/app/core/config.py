@@ -169,6 +169,12 @@ class Settings(BaseSettings):
     JOB_MAX_ATTEMPTS: int = 3
 
     # ---- Rate limits (requests per window) ----
+    # Master switch (off in tests for determinism).
+    RATE_LIMIT_ENABLED: bool = True
+    # Trust X-Forwarded-For for the client IP. Enable ONLY behind a proxy that
+    # overwrites it (Caddy does). Off by default so a direct-exposed dev server
+    # can't be fooled by a spoofed header.
+    TRUST_PROXY_HEADERS: bool = False
     RL_LOGIN_PER_15MIN: int = 5
     RL_SIGNUP_PER_HOUR: int = 3
     RL_TAILOR_PER_HOUR: int = 10

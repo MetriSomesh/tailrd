@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.deps import get_current_user, require_csrf
 from app.core.errors import BadRequestError
+from app.core.ratelimit import rate_limit
 from app.core.security import generate_csrf_token
 from app.db.models.user import User
 from app.db.session import get_session
@@ -96,7 +97,12 @@ def _user_to_response(user: User) -> UserResponse:
 # ---------------------------------------------------------------------------
 
 
-@router.post("/signup", response_model=AuthResponse, status_code=201)
+@router.post(
+    "/signup",
+    response_model=AuthResponse,
+    status_code=201,
+    dependencies=[Depends(rate_limit("signup", settings.RL_SIGNUP_PER_HOUR, 3600))],
+)
 async def signup(
     body: SignupRequest,
     request: Request,
@@ -124,7 +130,11 @@ async def signup(
     )
 
 
-@router.post("/login", response_model=AuthResponse)
+@router.post(
+    "/login",
+    response_model=AuthResponse,
+    dependencies=[Depends(rate_limit("login", settings.RL_LOGIN_PER_15MIN, 900))],
+)
 async def login(
     body: LoginRequest,
     request: Request,
@@ -185,7 +195,11 @@ async def verify_email(
     return MessageResponse(message="Email verified successfully.")
 
 
-@router.post("/resend-verification", response_model=MessageResponse)
+@router.post(
+    "/resend-verification",
+    response_model=MessageResponse,
+    dependencies=[Depends(rate_limit("resend", settings.RL_SIGNUP_PER_HOUR, 3600))],
+)
 async def resend_verification(
     body: ResendVerificationRequest,
     db: AsyncSession = Depends(get_session),
@@ -196,7 +210,11 @@ async def resend_verification(
     )
 
 
-@router.post("/forgot-password", response_model=MessageResponse)
+@router.post(
+    "/forgot-password",
+    response_model=MessageResponse,
+    dependencies=[Depends(rate_limit("forgot", settings.RL_SIGNUP_PER_HOUR, 3600))],
+)
 async def forgot_password(
     body: ForgotPasswordRequest,
     db: AsyncSession = Depends(get_session),
