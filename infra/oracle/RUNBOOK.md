@@ -139,3 +139,34 @@ journalctl -u tailrd-api -u tailrd-zenproxy -u tailrd-opencode -f
 ```
 The API also logs structured JSON per request (skipping `/health`,`/ready`) with a
 request id you can grep for when a user reports an error.
+
+## Capacity & backups
+
+Throughput: the API runs a single in-process worker (`WORKER_CONCURRENCY=1`), so
+exactly one tailor job runs at a time. A job is typically 2 LLM calls and lands
+around 1–3 minutes, i.e. very roughly 20–40 resumes/hour. Jobs queue in Redis and
+run FIFO; users watch live progress while they wait. This is comfortable for the
+free tier. Scale by moving the worker to its own process/box (set
+`WORKER_ENABLED=false` on the API and run a dedicated worker) before raising
+concurrency — two simultaneous agents roughly double memory.
+
+Footprint on the 12 GB A1: API+worker, `opencode serve`, `zen_proxy`, Redis, and
+(optionally) one headless Chromium peak a few hundred MB transiently — far under
+the box. `MemoryMax` on each unit is a guard, not a target.
+
+Maintenance: the API runs an in-process sweep every `MAINTENANCE_INTERVAL_SECONDS`
+(6h) that recovers crash-interrupted runs at startup and enforces retention
+(`RETAIN_DOCX_DAYS`, `RETAIN_RUNS_DAYS`, `ACCOUNT_DELETION_GRACE_DAYS`).
+
+Backups:
+- Postgres (Neon): use Neon's point-in-time restore / branching. Verify the free
+  tier's retention window meets your needs; take a periodic `pg_dump` if you want
+  an off-Neon copy.
+- Files (R2): object storage is durable; DOCX are regenerable from run JSON, so
+  they're not critical to back up.
+- Config: keep `/opt/tailrd/.env` backed up securely (it holds secrets); it is the
+  only non-reproducible state on the VM.
+
+Dependency audit (2026-07): `pip-audit` (API) and `npm audit` (web) both report
+zero known vulnerabilities. Re-run before each release:
+`pip-audit -r apps/api/requirements.txt` and `npm audit` in `apps/web`.
