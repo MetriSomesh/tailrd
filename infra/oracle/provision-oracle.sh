@@ -36,13 +36,16 @@ if ! id tailrd &>/dev/null; then
 fi
 
 # 3. Directory layout
+# The repo is cloned at $APP_DIR (see RUNBOOK step 3), so the API lives at
+# $APP_DIR/apps/api. venv + writable dirs live there; no symlink needed.
 APP_DIR="/opt/tailrd"
-mkdir -p "$APP_DIR"/{api/_storage,api/_agent_workspaces,ms-playwright,api/.cache}
+API_DIR="$APP_DIR/apps/api"
+mkdir -p "$API_DIR"/{_storage,_agent_workspaces,.cache} "$APP_DIR/ms-playwright"
 chown -R tailrd:tailrd "$APP_DIR"
 
 # 4. Python venv
 echo "Creating venv..."
-sudo -u tailrd python3 -m venv "$APP_DIR/api/.venv"
+sudo -u tailrd python3 -m venv "$API_DIR/.venv"
 
 # 5. Swap (optional on 12 GB, kept small as insurance)
 if [ ! -f /swapfile ]; then
@@ -68,9 +71,11 @@ else
     netfilter-persistent save || true
 fi
 
-# 7. systemd units
+# 7. systemd units (API + the LLM stack: opencode serve + zen_proxy)
 echo "Installing systemd units..."
 cp "$APP_DIR/infra/oracle/tailrd-api.service" /etc/systemd/system/tailrd-api.service
+cp "$APP_DIR/infra/oracle/tailrd-opencode.service" /etc/systemd/system/tailrd-opencode.service
+cp "$APP_DIR/infra/oracle/tailrd-zenproxy.service" /etc/systemd/system/tailrd-zenproxy.service
 systemctl daemon-reload
 systemctl enable redis-server caddy
 systemctl start redis-server
@@ -78,11 +83,12 @@ systemctl start redis-server
 echo ""
 echo "=== System provisioning complete ==="
 echo "Next (see infra/oracle/RUNBOOK.md):"
-echo "  1. git clone <repo> $APP_DIR   (as the tailrd user)"
+echo "  1. Repo already cloned at $APP_DIR (code at $API_DIR)."
 echo "  2. cp infra/oracle/.env.production.example /opt/tailrd/.env  &&  edit it"
-echo "  3. $APP_DIR/api/.venv/bin/pip install -r $APP_DIR/api/requirements.txt"
+echo "  3. $API_DIR/.venv/bin/pip install -r $API_DIR/requirements.txt"
 echo "  4. (browser fallback) pip install -r requirements-scraper.txt"
-echo "     sudo $APP_DIR/api/.venv/bin/playwright install-deps chromium"
-echo "     sudo -u tailrd PLAYWRIGHT_BROWSERS_PATH=$APP_DIR/ms-playwright $APP_DIR/api/.venv/bin/playwright install chromium"
-echo "  5. Edit /etc/caddy/Caddyfile (your domain) ; systemctl enable --now tailrd-api caddy"
-echo "  6. curl http://127.0.0.1:8000/ready"
+echo "     sudo $API_DIR/.venv/bin/playwright install-deps chromium"
+echo "     sudo -u tailrd PLAYWRIGHT_BROWSERS_PATH=$APP_DIR/ms-playwright $API_DIR/.venv/bin/playwright install chromium"
+echo "  5. Install the OpenCode CLI + 'opencode auth login' (RUNBOOK 5b)"
+echo "  6. Edit /etc/caddy/Caddyfile (your domain) ; systemctl enable --now tailrd-opencode tailrd-zenproxy tailrd-api caddy"
+echo "  7. curl http://127.0.0.1:8000/ready"

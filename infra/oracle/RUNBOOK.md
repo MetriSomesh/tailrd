@@ -50,7 +50,7 @@ sudo chown tailrd:tailrd /opt/tailrd/.env && sudo chmod 600 /opt/tailrd/.env
 
 ## 5. Install Python deps (+ browser fallback)
 ```bash
-VENV=/opt/tailrd/api/.venv
+VENV=/opt/tailrd/apps/api/.venv
 sudo -u tailrd $VENV/bin/pip install --upgrade pip
 sudo -u tailrd $VENV/bin/pip install -r /opt/tailrd/apps/api/requirements.txt
 
@@ -59,9 +59,8 @@ sudo -u tailrd $VENV/bin/pip install -r /opt/tailrd/apps/api/requirements-scrape
 sudo $VENV/bin/playwright install-deps chromium
 sudo -u tailrd PLAYWRIGHT_BROWSERS_PATH=/opt/tailrd/ms-playwright $VENV/bin/playwright install chromium
 ```
-Note: the systemd unit runs uvicorn from `WorkingDirectory=/opt/tailrd/api`. Ensure the
-API code is reachable there (e.g. symlink `sudo -u tailrd ln -s /opt/tailrd/apps/api /opt/tailrd/api`
-if you cloned the monorepo), or adjust the unit's paths to `/opt/tailrd/apps/api`.
+The repo is cloned at `/opt/tailrd`, so the API lives at `/opt/tailrd/apps/api`
+and the systemd units point there directly — no symlink needed.
 
 ## 5b. LLM stack: OpenCode CLI + zen_proxy (local, free, no API key)
 ```bash

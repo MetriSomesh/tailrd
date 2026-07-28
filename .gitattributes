@@ -1,0 +1,16 @@
+# Normalize line endings. Text files are stored with LF in the repo.
+* text=auto eol=lf
+
+# Files that MUST be LF on the Linux deploy host (CRLF breaks bash/systemd).
+*.sh text eol=lf
+*.service text eol=lf
+Caddyfile text eol=lf
+*.py text eol=lf
+
+# Binary assets: never touch.
+*.docx binary
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary

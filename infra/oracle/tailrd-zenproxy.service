@@ -16,8 +16,8 @@ Requires=tailrd-opencode.service
 Type=simple
 User=tailrd
 Group=tailrd
-WorkingDirectory=/opt/tailrd/api
-Environment=PATH=/opt/tailrd/api/.venv/bin:/usr/local/bin:/usr/bin:/bin
+WorkingDirectory=/opt/tailrd/apps/api
+Environment=PATH=/opt/tailrd/apps/api/.venv/bin:/usr/local/bin:/usr/bin:/bin
 Environment=HOME=/opt/tailrd
 # Bridge to the separately-supervised opencode serve rather than spawning one.
 Environment=ZEN_PROXY_MANAGE_SERVE=false
@@ -26,7 +26,7 @@ Environment=ZEN_PROXY_PORT=9876
 Environment=ZEN_MODEL_ID=deepseek-v4-flash-free
 Environment=ZEN_PROVIDER_ID=opencode
 
-ExecStart=/opt/tailrd/api/.venv/bin/python -m app.services.zen_proxy
+ExecStart=/opt/tailrd/apps/api/.venv/bin/python -m app.services.zen_proxy
 
 MemoryMax=512M
 
