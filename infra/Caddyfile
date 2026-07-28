@@ -6,6 +6,8 @@
 #   sudo cp Caddyfile /etc/caddy/Caddyfile
 #   sudo systemctl reload caddy
 
+# Replace YOUR_DOMAIN with your DuckDNS subdomain (e.g. tailrd-api.duckdns.org).
+# Caddy auto-issues a TLS certificate via Let's Encrypt.
 YOUR_DOMAIN {
     # TLS is automatic via Let's Encrypt. No config needed.
 

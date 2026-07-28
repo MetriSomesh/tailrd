@@ -91,8 +91,12 @@ class Settings(BaseSettings):
     PRESIGNED_URL_TTL_SECONDS: int = 300
 
     # ---- Payments ----
-    # mock = no network, deterministic (dev/test). razorpay = live integration.
-    PAYMENT_PROVIDER: Literal["mock", "razorpay"] = "mock"
+    # mock     = no network, deterministic (dev/test).
+    # disabled = free-only mode; billing endpoints return "unavailable" but the
+    #            app boots in production. Use this for a free-tier-only launch
+    #            before Razorpay is wired.
+    # razorpay = live integration.
+    PAYMENT_PROVIDER: Literal["mock", "disabled", "razorpay"] = "mock"
     RAZORPAY_KEY_ID: str | None = None
     RAZORPAY_KEY_SECRET: str | None = None
     RAZORPAY_WEBHOOK_SECRET: str | None = None
@@ -250,7 +254,10 @@ class Settings(BaseSettings):
             if self.EMAIL_PROVIDER == "console":
                 problems.append("EMAIL_PROVIDER must not be 'console' in production")
             if self.PAYMENT_PROVIDER == "mock":
-                problems.append("PAYMENT_PROVIDER must not be 'mock' in production")
+                problems.append(
+                    "PAYMENT_PROVIDER must not be 'mock' in production "
+                    "(use 'disabled' for free-only or 'razorpay' for payments)"
+                )
             if self.STORAGE_BACKEND == "local":
                 problems.append("STORAGE_BACKEND must be 's3' in production")
             if self.AGENT_BACKEND == "mock":

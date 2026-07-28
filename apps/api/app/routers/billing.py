@@ -6,13 +6,23 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.deps import get_verified_user, require_csrf
+from app.core.errors import BadRequestError
 from app.db.models.user import User
 from app.db.session import get_session
 from app.services import payments as payment_service
 from app.services.quota import get_usage_summary
 
 router = APIRouter(prefix="/billing", tags=["billing"])
+
+
+def _require_payments_enabled() -> None:
+    """Raise when PAYMENT_PROVIDER is 'disabled' — paid features are off."""
+    if settings.PAYMENT_PROVIDER == "disabled":
+        raise BadRequestError(
+            "Paid plans are not available yet. The free tier is fully functional."
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -84,7 +94,8 @@ async def create_credit_order(
     user: User = Depends(get_verified_user),
     db: AsyncSession = Depends(get_session),
 ):
-    """Create a ₹29 payment order for 1 resume credit."""
+    """Create a payment order for 1 resume credit."""
+    _require_payments_enabled()
     return await payment_service.purchase_credits(db, user.id)
 
 
@@ -97,6 +108,7 @@ async def confirm_payment(
     db: AsyncSession = Depends(get_session),
 ):
     """Confirm a credit payment after client-side Razorpay checkout."""
+    _require_payments_enabled()
     return await payment_service.confirm_credit_payment(
         db, user.id, body.order_id, body.payment_id, body.signature
     )
@@ -111,6 +123,7 @@ async def create_subscription(
     db: AsyncSession = Depends(get_session),
 ):
     """Start a weekly or monthly subscription."""
+    _require_payments_enabled()
     return await payment_service.start_subscription(db, user.id, body.plan)
 
 
@@ -120,4 +133,5 @@ async def cancel_subscription(
     db: AsyncSession = Depends(get_session),
 ):
     """Cancel the current subscription at the end of the billing period."""
+    _require_payments_enabled()
     return await payment_service.cancel_user_subscription(db, user.id)

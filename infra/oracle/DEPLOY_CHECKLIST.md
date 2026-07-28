@@ -11,20 +11,19 @@ blocker" before starting.
 
 ## ⚠ Known blocker: payments in production
 
-`validate_for_runtime()` refuses to boot with `PAYMENT_PROVIDER=mock` in
-production. So today prod requires Razorpay configured. If launching free-only
-(payments deferred), you must first either wire Razorpay OR add a
-payments-disabled mode (see the team; not yet implemented). Everything else below
-is ready.
+~~RESOLVED~~ — set `PAYMENT_PROVIDER=disabled` for a free-only launch. The app
+boots in production, billing/purchase endpoints return "not available yet", and
+the free tier (3 resumes/month) works. Wire Razorpay later when you want to
+charge.
 
 ## 0. Accounts + secrets to have on hand
 - [ ] Oracle Cloud account + an Ampere A1 (Arm) Always Free VM, Ubuntu 22.04/24.04
 - [ ] Neon Postgres connection string (`postgresql+psycopg://...`)
 - [ ] Cloudflare R2 bucket + S3 API key/secret + account endpoint
-- [ ] A domain for the API (e.g. `api.yourdomain.com`) with DNS access
+- [ ] A DuckDNS subdomain (free, e.g. `tailrd-api.duckdns.org`) pointed at your VM IP
 - [ ] Resend API key + a verified sender domain
 - [ ] (optional) Sentry DSN
-- [ ] (required for prod today) Razorpay key id/secret + webhook secret
+- [ ] Vercel account for the frontend (free `*.vercel.app` domain)
 
 ## 1. Network (two layers)
 - [ ] VCN Security List: ingress TCP 80 + 443 from 0.0.0.0/0
@@ -38,9 +37,9 @@ is ready.
 
 ## 3. Configure env
 - [ ] `sudo cp /opt/tailrd/infra/oracle/.env.production.example /opt/tailrd/.env`
-- [ ] Fill Neon / R2 / Resend / Razorpay / (Sentry); set `FRONTEND_URL` https,
-      `CORS_ORIGINS` to the site, `ALLOWED_HOSTS=api.yourdomain.com,127.0.0.1,localhost`,
-      `TRUST_PROXY_HEADERS=true`
+- [ ] Fill Neon / R2 / Resend; set `FRONTEND_URL` to your Vercel URL (https),
+      `CORS_ORIGINS` to the same, `ALLOWED_HOSTS=your-api.duckdns.org,127.0.0.1,localhost`,
+      `TRUST_PROXY_HEADERS=true`, `PAYMENT_PROVIDER=disabled`
 - [ ] `sudo chown tailrd:tailrd /opt/tailrd/.env && sudo chmod 600 /opt/tailrd/.env`
 
 ## 4. Python deps
@@ -57,19 +56,36 @@ is ready.
 - [ ] `cd /opt/tailrd/apps/api && sudo -u tailrd $VENV/bin/alembic upgrade head`
 
 ## 7. TLS + start
-- [ ] `sudo cp /opt/tailrd/infra/Caddyfile /etc/caddy/Caddyfile` then set your domain
-- [ ] DNS `A` record for the API host → VM public IP
+- [ ] Register a free subdomain at https://duckdns.org → point it at your VM's public IP
+- [ ] `sudo cp /opt/tailrd/infra/Caddyfile /etc/caddy/Caddyfile` then replace `YOUR_DOMAIN`
+      with your DuckDNS subdomain (e.g. `tailrd-api.duckdns.org`)
 - [ ] `sudo systemctl enable --now tailrd-api caddy`
 - [ ] `curl -s http://127.0.0.1:8000/ready` → `{"status":"ready", ... agent: openai endpoint up}`
 
-## 8. Smoke test (prod)
+## 8. Frontend (Vercel)
+- [ ] Push the repo to GitHub (or import to Vercel from local)
+- [ ] Vercel → New project → root dir `apps/web`, framework Next.js
+- [ ] Set env var `NEXT_PUBLIC_API_URL` → `https://your-api.duckdns.org`
+- [ ] Deploy → note the `*.vercel.app` URL
+- [ ] Update the backend `.env`: `FRONTEND_URL` + `CORS_ORIGINS` → that Vercel URL
+- [ ] `sudo systemctl restart tailrd-api` (picks up the new CORS origin)
+
+## 8. Frontend (Vercel)
+- [ ] Push the repo to GitHub (or import to Vercel from local)
+- [ ] Vercel → New project → root dir `apps/web`, framework Next.js
+- [ ] Set env var `NEXT_PUBLIC_API_URL` → `https://your-api.duckdns.org`
+- [ ] Deploy → note the `*.vercel.app` URL
+- [ ] Update the backend `.env`: `FRONTEND_URL` + `CORS_ORIGINS` → that Vercel URL
+- [ ] `sudo systemctl restart tailrd-api` (picks up the new CORS origin)
+
+## 9. Smoke test (prod)
 - [ ] Sign up → receive verification email (Resend) → verify via `/verify`
 - [ ] Complete onboarding (resume upload parse works)
 - [ ] Tailor a real posting URL → progress → succeeded → download DOCX
 - [ ] Forgot-password → reset via `/reset-password` → login with new password
 - [ ] Hammer login 6× → 6th returns 429 (rate limiting live)
 
-## 9. Ops
+## 10. Ops
 - [ ] Point an uptime monitor at `https://api.yourdomain.com/health`
 - [ ] `journalctl -u tailrd-api -u tailrd-zenproxy -u tailrd-opencode -f` looks clean
 
