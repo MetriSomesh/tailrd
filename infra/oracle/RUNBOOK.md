@@ -117,3 +117,25 @@ sudo systemctl restart tailrd-api && curl -s http://127.0.0.1:8000/ready
   Chromium (one at a time — worker concurrency is 1). HTTP-first keeps most scrapes browser-free.
 - **Frontend:** set the Vercel project's API base to `https://api.yourdomain.com` and keep the
   same-origin `/api/backend` rewrite pointing there.
+
+## Monitoring & health
+
+Two probes (no auth, cheap):
+- `GET /health` — liveness only, never touches dependencies. Point an external
+  uptime monitor (e.g. UptimeRobot's free tier, Better Uptime) at
+  `https://api.yourdomain.com/health` on a 1–5 min interval.
+- `GET /ready` — readiness: checks Postgres (required → 503 if down), Redis and
+  the LLM endpoint (informational, surfaced via `"degraded": true`). Useful for a
+  deeper check or a status page.
+
+Error tracking (optional but recommended): set `SENTRY_DSN` in `/opt/tailrd/.env`
+(free Sentry tier). It's initialised at startup with `send_default_pii=false` and
+a 10% trace sample; leave it unset to disable.
+
+Process health: systemd restarts each unit on failure (`Restart=on-failure`/
+`always`). Inspect logs with:
+```bash
+journalctl -u tailrd-api -u tailrd-zenproxy -u tailrd-opencode -f
+```
+The API also logs structured JSON per request (skipping `/health`,`/ready`) with a
+request id you can grep for when a user reports an error.
