@@ -113,7 +113,9 @@ async def finalize_account_deletions(db: AsyncSession) -> int:
                 try:
                     await storage.delete(run.docx_storage_key)
                 except Exception as exc:  # noqa: BLE001
-                    log.warning("account_docx_delete_failed", run_id=run.id, error=type(exc).__name__)
+                    log.warning(
+                        "account_docx_delete_failed", run_id=run.id, error=type(exc).__name__
+                    )
             await db.delete(run)
         await db.delete(user)
         log.info("account_finalized", user_id=user.id)

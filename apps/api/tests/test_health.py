@@ -208,7 +208,9 @@ class TestProdHardeningGuards:
 
         kw = self._valid_prod_kwargs()
         kw["FRONTEND_URL"] = "http://app.example.com"
-        assert any("FRONTEND_URL must use https" in p for p in Settings(**kw).validate_for_runtime())
+        assert any(
+            "FRONTEND_URL must use https" in p for p in Settings(**kw).validate_for_runtime()
+        )
 
     def test_prod_rejects_localhost_cors(self) -> None:
         from app.core.config import Settings

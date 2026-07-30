@@ -114,7 +114,9 @@ class TestRetention:
         async with sm() as db:
             u = await _mk_user(db)
             db.add(
-                TailorRun(id=new_uuid(), user_id=u.id, status="succeeded", jd_text="x", created_at=old)
+                TailorRun(
+                    id=new_uuid(), user_id=u.id, status="succeeded", jd_text="x", created_at=old
+                )
             )
             await db.commit()
 

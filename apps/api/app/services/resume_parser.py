@@ -127,7 +127,7 @@ async def _extract_via_opencode(text: str) -> dict:
             await asyncio.wait_for(
                 proc.communicate(), timeout=settings.RESUME_PARSE_TIMEOUT_SECONDS
             )
-        except (TimeoutError, asyncio.TimeoutError):
+        except TimeoutError:
             # Too slow for a synchronous upload — kill it and fall back to heuristic.
             proc.kill()
             with __import__("contextlib").suppress(Exception):
@@ -175,7 +175,9 @@ def _extract_heuristic(text: str) -> dict:
     for ln in lines[:5]:
         if _EMAIL_RE.search(ln) or _PHONE_RE.search(ln):
             continue
-        if len(ln) <= 60 and not ln.lower().startswith(("summary", "experience", "skills", "education")):
+        if len(ln) <= 60 and not ln.lower().startswith(
+            ("summary", "experience", "skills", "education")
+        ):
             full_name = ln
             break
 

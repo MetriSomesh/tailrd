@@ -59,7 +59,7 @@ async def enforce(request: Request, *, scope: str, limit: int, window: int) -> N
             ttl = await get_redis().ttl(key)
             if isinstance(ttl, int) and ttl > 0:
                 retry_after = ttl
-        except Exception:  # noqa: BLE001 - TTL is best-effort
+        except Exception:  # noqa: BLE001, S110 - TTL is best-effort
             pass
         log.warning("rate_limited", scope=scope, ip=ip, count=count, limit=limit)
         raise RateLimitedError(

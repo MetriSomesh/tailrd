@@ -15,6 +15,7 @@ The pure text helpers are separated from the fetch so they can be unit-tested.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import html as html_lib
 import ipaddress
 import json
@@ -208,9 +209,7 @@ async def _assert_public_url(url: str) -> None:
 
     port = parsed.port or (443 if parsed.scheme.lower() == "https" else 80)
     try:
-        infos = await asyncio.to_thread(
-            socket.getaddrinfo, host, port, 0, socket.SOCK_STREAM
-        )
+        infos = await asyncio.to_thread(socket.getaddrinfo, host, port, 0, socket.SOCK_STREAM)
     except socket.gaierror:
         raise JDScrapeError("We couldn't resolve that job posting link.") from None
 
@@ -311,10 +310,8 @@ async def _scrape_with_browser(url: str) -> str | None:
 
                 page = await context.new_page()
                 await page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
-                try:
+                with contextlib.suppress(Exception):  # best-effort settle
                     await page.wait_for_load_state("networkidle", timeout=8000)
-                except Exception:  # noqa: BLE001 - best-effort settle
-                    pass
                 await page.wait_for_timeout(800)
                 html = await page.content()
             finally:

@@ -36,9 +36,7 @@ from app.services.storage import generate_storage_key, get_storage
 log = get_logger(__name__)
 
 
-async def _set_progress(
-    db: AsyncSession, run: TailorRun, progress: int, stage: str
-) -> None:
+async def _set_progress(db: AsyncSession, run: TailorRun, progress: int, stage: str) -> None:
     """Persist a progress checkpoint so the polling frontend can render a live bar.
 
     Committed immediately (not batched) because the whole point is that a

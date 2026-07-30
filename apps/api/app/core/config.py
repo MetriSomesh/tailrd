@@ -268,9 +268,7 @@ class Settings(BaseSettings):
                 problems.append("AGENT_ENABLED must be true in production")
             if not self.FRONTEND_URL.lower().startswith("https://"):
                 problems.append("FRONTEND_URL must use https:// in production")
-            if any(
-                "localhost" in o or "127.0.0.1" in o for o in self.cors_origin_list
-            ):
+            if any("localhost" in o or "127.0.0.1" in o for o in self.cors_origin_list):
                 problems.append("CORS_ORIGINS must not include localhost in production")
 
         if self.EMAIL_PROVIDER == "resend" and not self.RESEND_API_KEY:
@@ -288,7 +286,9 @@ class Settings(BaseSettings):
         # The real agent needs credentials for the model gateway. In production we
         # require the key via env; locally it may come from `opencode auth login`.
         if self.is_production and self.AGENT_BACKEND == "opencode" and not self.OPENCODE_API_KEY:
-            problems.append("OPENCODE_API_KEY is required when AGENT_BACKEND=opencode in production")
+            problems.append(
+                "OPENCODE_API_KEY is required when AGENT_BACKEND=opencode in production"
+            )
 
         if (self.GOOGLE_CLIENT_ID is None) != (self.GOOGLE_CLIENT_SECRET is None):
             problems.append("GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set together")

@@ -24,24 +24,6 @@ import uuid
 from abc import ABC, abstractmethod
 from pathlib import Path
 
-
-def _resolve_cli(command: str) -> list[str]:
-    """Return the argv prefix to invoke a CLI cross-platform.
-
-    npm installs Windows shims as .cmd/.ps1, which CreateProcess (used by
-    asyncio.create_subprocess_exec) cannot execute directly — so on Windows we
-    route .cmd/.bat through cmd.exe and .ps1 through PowerShell. On POSIX the
-    resolved path (or the bare command) runs directly.
-    """
-    exe = shutil.which(command) or command
-    if sys.platform == "win32":
-        low = exe.lower()
-        if low.endswith((".cmd", ".bat")):
-            return ["cmd.exe", "/c", exe]
-        if low.endswith(".ps1"):
-            return ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", exe]
-    return [exe]
-
 from app.core.config import settings
 from app.core.errors import (
     AgentOutputInvalidError,
@@ -53,6 +35,24 @@ from app.services.cache import get_redis
 from app.services.circuit_breaker import agent_breaker
 
 log = get_logger(__name__)
+
+
+def _resolve_cli(command: str) -> list[str]:
+    """Return the argv prefix to invoke a CLI cross-platform.
+
+    npm installs Windows shims as .cmd/.ps1, which CreateProcess (used by
+    asyncio.create_subprocess_exec) cannot execute directly, so on Windows we
+    route .cmd/.bat through cmd.exe and .ps1 through PowerShell. On POSIX the
+    resolved path (or the bare command) runs directly.
+    """
+    exe = shutil.which(command) or command
+    if sys.platform == "win32":
+        low = exe.lower()
+        if low.endswith((".cmd", ".bat")):
+            return ["cmd.exe", "/c", exe]
+        if low.endswith(".ps1"):
+            return ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", exe]
+    return [exe]
 
 
 class AgentResult:
@@ -258,7 +258,11 @@ class OpenCodeAgentBackend(AgentBackend):
         except (json.JSONDecodeError, UnicodeDecodeError) as exc:
             log.error("agent_output_parse_error", run_id=run_id, error=str(exc)[:200])
             raise AgentOutputInvalidError("Resume engine produced invalid output.") from exc
-        if not isinstance(tailored, dict) or "immutable" not in tailored or "editable" not in tailored:
+        if (
+            not isinstance(tailored, dict)
+            or "immutable" not in tailored
+            or "editable" not in tailored
+        ):
             raise AgentOutputInvalidError("Resume engine output is missing required keys.")
         return tailored
 
@@ -304,7 +308,7 @@ class OpenCodeAgentBackend(AgentBackend):
                     process.communicate(),
                     timeout=self._timeout,
                 )
-            except (TimeoutError, asyncio.TimeoutError) as exc:
+            except TimeoutError as exc:
                 process.kill()
                 await process.wait()
                 log.error("agent_timeout", run_id=run_id, timeout=self._timeout)
@@ -318,9 +322,7 @@ class OpenCodeAgentBackend(AgentBackend):
                     returncode=process.returncode,
                     stderr=stderr_text,
                 )
-                raise AgentUnavailableError(
-                    f"Resume engine exited with code {process.returncode}."
-                )
+                raise AgentUnavailableError(f"Resume engine exited with code {process.returncode}.")
 
             tailored = self._parse_output(workspace, run_id)
             log.info("agent_success", run_id=run_id)
@@ -457,7 +459,7 @@ class OpenAICompatibleAgentBackend(AgentBackend):
                 resp = await client.post(
                     f"{self._base_url}/chat/completions", json=payload, headers=headers
                 )
-        except (httpx.TimeoutException, TimeoutError, asyncio.TimeoutError) as exc:
+        except (httpx.TimeoutException, TimeoutError) as exc:
             raise AgentTimeoutError(f"Resume engine timed out after {self._timeout}s.") from exc
         except httpx.HTTPError as exc:
             log.error("agent_openai_transport_error", error=type(exc).__name__)
@@ -472,7 +474,9 @@ class OpenAICompatibleAgentBackend(AgentBackend):
             content = data["choices"][0]["message"]["content"]
         except (ValueError, KeyError, IndexError, TypeError) as exc:
             log.error("agent_openai_bad_envelope", error=str(exc)[:200])
-            raise AgentOutputInvalidError("Resume engine returned an unexpected response shape.") from exc
+            raise AgentOutputInvalidError(
+                "Resume engine returned an unexpected response shape."
+            ) from exc
 
         try:
             tailored = _extract_json_object(content)
@@ -480,7 +484,11 @@ class OpenAICompatibleAgentBackend(AgentBackend):
             log.error("agent_openai_parse_error", error=str(exc)[:200])
             raise AgentOutputInvalidError("Resume engine did not return valid JSON.") from exc
 
-        if not isinstance(tailored, dict) or "immutable" not in tailored or "editable" not in tailored:
+        if (
+            not isinstance(tailored, dict)
+            or "immutable" not in tailored
+            or "editable" not in tailored
+        ):
             raise AgentOutputInvalidError("Resume engine output is missing required keys.")
 
         log.info("agent_openai_success", model=self._model)
@@ -575,7 +583,7 @@ async def check_agent() -> tuple[bool, str]:
         stdout, _ = await asyncio.wait_for(process.communicate(), timeout=10)
     except FileNotFoundError:
         return False, f"'{settings.AGENT_COMMAND}' not found on PATH"
-    except (TimeoutError, asyncio.TimeoutError):
+    except TimeoutError:
         return False, "version check timed out"
     except Exception as exc:  # noqa: BLE001
         return False, type(exc).__name__

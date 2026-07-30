@@ -49,20 +49,21 @@ test.describe("tailor page", () => {
   test("renders the form", async ({ page }) => {
     await page.goto("/tailor");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Tailor a resume");
-    await expect(page.getByLabel(/job description/i)).toBeVisible();
+    await expect(page.getByLabel(/job posting url/i)).toBeVisible();
   });
 
-  test("submit is disabled until the JD is long enough", async ({ page }) => {
+  test("submit is disabled until a valid URL is entered", async ({ page }) => {
     await page.goto("/tailor");
     const submit = page.getByRole("button", { name: /tailor resume/i });
     await expect(submit).toBeDisabled();
-    await page.getByLabel(/job description/i).fill("x".repeat(60));
+    await page.getByLabel(/job posting url/i).fill("https://example.com/careers/engineer");
     await expect(submit).toBeEnabled();
   });
 
-  test("shows a live character counter", async ({ page }) => {
+  test("stays disabled for a non-URL value", async ({ page }) => {
     await page.goto("/tailor");
-    await expect(page.getByText(/50 more characters/i)).toBeVisible();
+    await page.getByLabel(/job posting url/i).fill("not a url");
+    await expect(page.getByRole("button", { name: /tailor resume/i })).toBeDisabled();
   });
 
   test("passes WCAG audit", async ({ page }) => {

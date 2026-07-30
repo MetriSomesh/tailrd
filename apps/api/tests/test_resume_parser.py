@@ -111,7 +111,12 @@ class TestParseResumeEndpoint:
         assert r.status_code == 415
 
     async def test_requires_auth(self, client: AsyncClient) -> None:
-        files = {"file": ("resume.docx", _docx_bytes(RESUME_TEXT),
-                          "application/vnd.openxmlformats-officedocument.wordprocessingml.document")}
+        files = {
+            "file": (
+                "resume.docx",
+                _docx_bytes(RESUME_TEXT),
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        }
         r = await client.post("/api/v1/profile/parse-resume", files=files)
         assert r.status_code in (401, 403)

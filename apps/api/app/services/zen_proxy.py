@@ -29,12 +29,11 @@ import shutil
 import subprocess
 import sys
 import time
+import urllib.error
+import urllib.request
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
-
-import urllib.error
-import urllib.request
 
 # ---------------------------------------------------------------------------
 # Configuration (env-driven so this can run without importing the app)
@@ -56,6 +55,7 @@ SERVER_AUTH = (
 
 def _auth_headers() -> dict:
     return {"Authorization": f"Basic {SERVER_AUTH}"} if SERVER_AUTH else {}
+
 
 PROVIDER_ID = os.environ.get("ZEN_PROVIDER_ID", "opencode")
 MODEL_ID = os.environ.get("ZEN_MODEL_ID", "deepseek-v4-flash-free")
@@ -276,7 +276,10 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 "choices": [
                     {
                         "index": 0,
-                        "message": {"role": "assistant", "content": response_text or "[no response]"},
+                        "message": {
+                            "role": "assistant",
+                            "content": response_text or "[no response]",
+                        },
                         "finish_reason": "stop",
                     }
                 ],
@@ -332,7 +335,9 @@ def main() -> None:
     _log(f"OpenCode server ready: {health}")
 
     server = ThreadingHTTPServer((HOST, PROXY_PORT), ProxyHandler)
-    _log(f"OpenAI bridge on http://{HOST}:{PROXY_PORT}/v1  (model={MODEL_ID}, provider={PROVIDER_ID})")
+    _log(
+        f"OpenAI bridge on http://{HOST}:{PROXY_PORT}/v1  (model={MODEL_ID}, provider={PROVIDER_ID})"
+    )
     try:
         server.serve_forever()
     except KeyboardInterrupt:

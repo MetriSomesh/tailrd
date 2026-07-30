@@ -14,12 +14,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.deps import get_current_user, get_verified_user, require_csrf
 from app.core.errors import NotFoundError, OnboardingIncompleteError, QueueUnavailableError
+from app.core.ratelimit import rate_limit
 from app.db.base import new_uuid, utcnow
 from app.db.models.profile import Profile
 from app.db.models.run import TailorRun
 from app.db.models.user import User
 from app.db.session import get_session
-from app.core.ratelimit import rate_limit
 from app.services.quota import check_and_consume_entitlement, refund_entitlement
 from app.services.storage import get_storage
 from app.workers.runner import enqueue_job
@@ -45,13 +45,11 @@ class TailorRequest(BaseModel):
     role: str | None = Field(default=None, max_length=200)
 
     @model_validator(mode="after")
-    def _require_a_source(self) -> "TailorRequest":
+    def _require_a_source(self) -> TailorRequest:
         has_url = bool(self.jd_url and _URL_RE.match(self.jd_url.strip()))
         has_text = bool(self.jd_text and len(self.jd_text.strip()) >= 50)
         if not has_url and not has_text:
-            raise ValueError(
-                "Provide the job posting URL (starting with http:// or https://)."
-            )
+            raise ValueError("Provide the job posting URL (starting with http:// or https://).")
         return self
 
 

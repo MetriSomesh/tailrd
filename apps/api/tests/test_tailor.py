@@ -235,8 +235,10 @@ class TestQuotaEnforcement:
 
         async with get_sessionmaker()() as db:
             uid = (
-                await db.execute(select(User).where(User.email == "tailor@test.com"))
-            ).scalar_one().id
+                (await db.execute(select(User).where(User.email == "tailor@test.com")))
+                .scalar_one()
+                .id
+            )
             await add_credits(db, uid, 1)
             await db.commit()
 

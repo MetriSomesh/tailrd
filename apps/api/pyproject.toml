@@ -31,9 +31,14 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101", "S105", "S106", "T20", "ASYNC240"]
+"tests/*" = ["S101", "S104", "S105", "S106", "S108", "T20", "ASYNC240", "C408"]
 "app/engine/*" = ["T20", "S110", "S105", "E501", "C4", "UP", "B", "SIM", "RET", "I"]  # ported code, lint lightly
 "app/services/email.py" = ["T20"]  # console provider prints emails intentionally
+# zen_proxy legitimately spawns `opencode serve` and opens loopback HTTP URLs.
+"app/services/zen_proxy.py" = ["S603", "S310"]
+# resume_parser does sync file IO in async + falls back to a heuristic on any
+# parse error (intentional broad excepts / re-raises).
+"app/services/resume_parser.py" = ["ASYNC240", "B904", "S112"]
 "tests/engine/*" = ["S101", "S105", "S106", "T20", "ASYNC240", "E501", "I", "SIM"]
 
 [tool.pytest.ini_options]

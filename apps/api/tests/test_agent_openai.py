@@ -26,7 +26,12 @@ BASE_RESUME = {
 }
 GOOD_OUTPUT = {
     "immutable": BASE_RESUME["immutable"],
-    "editable": {"about": "Tailored.", "skills": {"Lang": ["Python"]}, "experience": [], "projects": []},
+    "editable": {
+        "about": "Tailored.",
+        "skills": {"Lang": ["Python"]},
+        "experience": [],
+        "projects": [],
+    },
 }
 
 
@@ -102,7 +107,11 @@ class TestOpenAIBackend:
         monkeypatch.setattr(settings, "AGENT_MODEL", "deepseek-v4-flash-free")
         monkeypatch.setattr(settings, "AGENT_API_BASE_URL", "http://127.0.0.1:9876/v1")
         capture: dict = {}
-        _patch(monkeypatch, resp=FakeResp(json_data=_completion(json.dumps(GOOD_OUTPUT))), capture=capture)
+        _patch(
+            monkeypatch,
+            resp=FakeResp(json_data=_completion(json.dumps(GOOD_OUTPUT))),
+            capture=capture,
+        )
 
         await OpenAICompatibleAgentBackend().run(BASE_RESUME, "UNIQUE_JD", allow_ai_projects=True)
 

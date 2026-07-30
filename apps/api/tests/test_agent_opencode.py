@@ -27,7 +27,12 @@ BASE_RESUME = {
 }
 GOOD_OUTPUT = {
     "immutable": BASE_RESUME["immutable"],
-    "editable": {"about": "Tailored.", "skills": {"Lang": ["Python"]}, "experience": [], "projects": []},
+    "editable": {
+        "about": "Tailored.",
+        "skills": {"Lang": ["Python"]},
+        "experience": [],
+        "projects": [],
+    },
 }
 
 
